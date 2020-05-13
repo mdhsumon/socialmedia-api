@@ -24,7 +24,6 @@ const createNewUserFolder = username => {
             err ? createStatus = false : createStatus = true
         })
     })
-    return file && !err ? true : false
 }
 
 // Upload files and return file paths

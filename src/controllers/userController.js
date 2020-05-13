@@ -53,8 +53,8 @@ const createUser = (req, res) => {
             }
             else {
                 // Initialized new user folders
-                const createStatus = FC.createNewUserFolder(newUser.username)
-                if(createStatus) {
+                FC.createNewUserFolder(newUser.username)
+                if(true) {
                     // Create new user
                     UM.create(newUser, err => {
                         if (err) throw err
@@ -64,7 +64,7 @@ const createUser = (req, res) => {
                     })
                 }
                 else {
-                    console.log(createStatus)
+                    console.log('statu', createStatus)
                     res.json({ status: false, message: "File write permission denied" })
                 }
             }
