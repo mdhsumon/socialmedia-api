@@ -309,20 +309,31 @@ const acceptFrinedRequest = (req, res) => {
                                     if (err) res.json({ status: false, message: "Something went wrong" })
                                     else {
                                         // Chat initialization
-                                        [resUserData._id, senderId].map(user => {
-                                            const pushId = user === resUserData._id ? senderId : resUserData._id
-                                            CM.updateOne(
-                                                { userId: user, "messageList.friendId": { $ne: pushId } },
-                                                { $push: { messageList: { friendId: pushId } } },
-                                                err => { }
-                                            )
-                                        })
-                                        res.json({ status: true, message: "Friend request has accepted" })
+                                        CM.updateOne(
+                                            { userId: resUserData._id, "messageList.friendId": { $ne: senderId } },
+                                            { $push: { messageList: { friendId: senderId } } },
+                                            err => {
+                                                if(err) res.json({ status: false, message: "Something went wrong" })
+                                                else {
+                                                    CM.updateOne(
+                                                        { userId: senderId, "messageList.friendId": { $ne: resUserData._id } },
+                                                        { $push: { messageList: { friendId: resUserData._id } } },
+                                                        err => {
+                                                            if(err) res.json({ status: false, message: "Something went wrong" })
+                                                            else {
+                                                                res.json({ status: true, message: "Friend request has accepted" })
+                                                            }
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        )
                                     }
                                 }
                             )
                         }
-                    })
+                    }
+                )
             }
             else {
                 res.json({ status: false, message: "Friend request has already been accepted" })

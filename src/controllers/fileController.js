@@ -57,7 +57,7 @@ const getDefaultFile = (req, res) => {
 const getUserFile = (req, res) => {
     const filePath = `./src/resources/user/${req.params.fileType}s/${req.params.fileName}`
     res.sendFile(filePath, { root: root.rootPath }, err => {
-        if(err) res.json("Invalid url")
+        if(err) console.log("Not found: " + filePath)
     })
 }
 

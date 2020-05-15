@@ -13,7 +13,13 @@ const userLogin = (req, res) => {
             // Store login data
             LM.updateOne(
                 {userId: userData._id},
-                {username: userData.username, accessToken: token, tokenExpire: tokenExpire, onlineStatus: 'online'},
+                {
+                    username: userData.username,
+                    accessToken: token,
+                    tokenExpire: tokenExpire,
+                    lastLogin: Date.now().toString(),
+                    onlineStatus: 'online'
+                },
                 err => {
                     if(err) res.json({ status: false, message: "Something went wrong" })
                     else {
@@ -31,10 +37,25 @@ const userLogin = (req, res) => {
 // User logout and destroy token
 const userLogout = (req, res) => {
     if (true) {
-        res.json({ status: true, message: "Logout successfull" })
+        // Remove login data
+        LM.updateOne(
+            {username: 'delower'},
+            {
+                accessToken: '',
+                tokenExpire: '',
+                lastLogout: Date.now().toString(),
+                onlineStatus: 'offline'
+            },
+            err => {
+                if(err) res.json({ status: false, message: "Something went wrong" })
+                else {
+                    res.json({ status: true, message: "Logout successfull" })
+                }
+            }
+        )
     } 
     else {
-        res.json({ status: false, message: "Authorization failed" })
+        res.json({ status: false, message: "You are already logged out" })
     }
 }
 

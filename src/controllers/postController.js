@@ -22,7 +22,6 @@ const createPost = (req, res) => {
         }
         if(files.photos) {
             FC.uploadFiles(files.photos, loggedUser.username, filePaths => {
-                console.log(filePaths)
                 let pathList = [], fileCoount = filePaths.length
                 for(let i = 0; i < fileCoount; i++) {
                     pathList.push({ path: filePaths[i] })

@@ -9,7 +9,7 @@ const userRoutes = app => {
     app.post('/login', MW.userLogin)
 
     // User logout
-    app.post('/logout', MW.checkUserToken, MW.userLogout)
+    app.get('/logout', MW.userLogout)
 
     // Check username or email exist or not
     app.get('/check/:type/:userOrEmail', UC.isUserExist)
