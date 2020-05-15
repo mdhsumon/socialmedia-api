@@ -5,7 +5,7 @@ const UM = require("../models/userModel")
 const getTableColumn = (req, res) => {
     const tableModel = req.params.table === 'user' ? UM : req.params.table === 'post' ? PM : ''
     tableModel.findOne({_id: req.params.rowId}, req.params.column, (err, columnData) => {
-        if(err) throw err
+        if(err) res.json({ status: false, message: "Something went wrong" })
         res.json(columnData)
     })
 }
@@ -14,7 +14,7 @@ const getTableColumn = (req, res) => {
 const updateTableColumn = (req, res) => {
     const tableModel = req.params.table === 'user' ? UM : req.params.table === 'post' ? PM : ''
     tableModel.updateOne({_id: req.params.rowId}, req.body, err => {
-        if(err) throw err
+        if(err) res.json({ status: false, message: "Something went wrong" })
         res.json({ status: true, message: `Column(${req.params.column}) is updated` })
     })
 }

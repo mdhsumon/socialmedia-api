@@ -13,7 +13,7 @@ const chatSchema = new mongoose.Schema({
                         origin: { type: String, reqired: true },
                         message: { type: String },
                         readStatus: { type: String, default: 'unread' },
-                        time: { type: String, default: Date.now() }
+                        time: { type: String, default: Date.now().toString() }
                     }
                 ]
             }

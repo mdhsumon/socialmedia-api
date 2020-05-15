@@ -1,76 +1,69 @@
 const root = require('../../index')
 const fs = require("fs")
 const mv = require("mv")
+const CA = require("../common/commonActions")
 
 // Create folder to any directory
 const createFolder = path => {
     path = root.rootPath + path
-    fs.mkdir(path, {recursive: true, mode: 0o777}, callback => {
-    })
-}
-
-// Create folders for new user
-const createNewUserFolder = username => {
-    path = root.rootPath + '/src/resources/users/' + username
-    fs.mkdir(path, err => {
-
-        fs.mkdir(path + '/files', err => {
-            err ? createStatus = false : createStatus = true
-        })
-        fs.mkdir(path + '/images', err => {
-            err ? createStatus = false : createStatus = true
-        })
-        fs.mkdir(path + '/videos', err => {
-            err ? createStatus = false : createStatus = true
-        })
+    fs.mkdir(path, {recursive: true, mode: 7777}, (err, status) => {
+        status(err ? false : true)
     })
 }
 
 // Upload files and return file paths
 const uploadFiles = (fileObjects, username, callback) => {
     let filePaths = []
-    const fileCount = fileObjects.length
-    if(fileCount > 1) {
-        for(let i = 0; i < fileCount; i++) {
-            const fileName = fileObjects[i].name.toLowerCase()// + '-' + Date.now()
-            const oldPath = fileObjects[i].path
-            const fileType = fileObjects[i].type.split('/')
-            const newPath = root.rootPath + '/src/resources/users/' + username + '/' + fileType[0] + 's/' + fileName
-            filePaths[i] = '/file/' + username + '/' + fileType[0] + '/' + fileName
-            mv(oldPath, newPath, err => {
-                if(err) return callback(false)
-            })
-        }
+
+    // File name formating. Sample: username-timestamp-filename.extension
+    const formatFileName = name => {
+        const modifiedName = name.replace(/\s+|-+|#+/g, '_').toLowerCase()
+        return /*username + '-' + */ Date.now().toString() + '-' + modifiedName
     }
-    else {
-        const fileName = fileObjects.name.toLowerCase()// + '-' + Date.now()
-        const oldPath = fileObjects.path
-        const fileType = fileObjects.type.split('/')
-        const newPath = root.rootPath + '/src/resources/users/' + username + '/' + fileType[0] + 's/' + fileName
-        filePaths[0] = '/file/' + username + '/' + fileType[0] + '/' + fileName
+
+    // Move file into respective directory
+    const moveFile = file => {
+        const fileName = formatFileName(file.name)
+        const oldPath = file.path
+        const fileType = file.type.split('/')
+        const newPath = root.rootPath + '/src/resources/user/' + fileType[0] + 's/' + fileName
         mv(oldPath, newPath, err => {
-            if(err) callback(false)
+            if(err) return callback([])
+        })
+        filePaths.push('/' + fileType[0] + '/' + fileName)
+    }
+
+    if(fileObjects.length > 1) {
+        fileObjects.map(file => {
+            moveFile(file)
         })
     }
+    else {
+        moveFile(fileObjects)
+    }
+
     callback(filePaths)
 }
 
 // Global file serving
-const getGlobalFile = (req, res) => {
-    const filePath = `./src/resources/global/${req.params.fileType}s/${req.params.fileName}`
-    return res.sendFile(filePath, { root: root.rootPath })
+const getDefaultFile = (req, res) => {
+    const filePath = `./src/resources/default/${req.params.fileType}s/${req.params.fileName}`
+    res.sendFile(filePath, { root: root.rootPath }, err => {
+        if(err) res.json("Invalid url")
+    })
 }
 
 // User file serving
 const getUserFile = (req, res) => {
-    const filePath = `./src/resources/users/${req.params.username}/${req.params.fileType}s/${req.params.fileName}`
-    return res.sendFile(filePath, { root: root.rootPath })
+    const filePath = `./src/resources/user/${req.params.fileType}s/${req.params.fileName}`
+    res.sendFile(filePath, { root: root.rootPath }, err => {
+        if(err) res.json("Invalid url")
+    })
 }
 
 module.exports = {
     createFolder,
-    createNewUserFolder,
     uploadFiles,
-    getGlobalFile,
+    getDefaultFile,
     getUserFile
 }

@@ -37,7 +37,7 @@ const postSchema = new mongoose.Schema({
         },
         comments: [
             {
-                commentedAt: { type: String, default: Date.now() },
+                commentedAt: { type: String, default: Date.now().toString() },
                 updatedAt: { type: String },
                 userId: { type: String, required: true },
                 message: { type: String },

@@ -21,7 +21,7 @@ const userAuthorization = (user, password, callback) => {
 const createToken = (tokenPayload, tokenOptions) => {
     const jwtSecrecKey = "tokensecrectkey"
     tokenOptions = {
-        expiresIn: "12h"
+        expiresIn: "1h"
     } 
     return jwt.sign(tokenPayload, jwtSecrecKey, tokenOptions)
 }
@@ -36,7 +36,7 @@ const verifyToken = (token, verifyOptions, callback) => {
     })
 }
 
-// Verify user token
+// Logged user info
 const getLoggedUser = req => {
     const userToken = req.headers.authorization.split(" ")[1]
     return jwt.decode(userToken)

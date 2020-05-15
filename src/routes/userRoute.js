@@ -46,15 +46,6 @@ const userRoutes = app => {
 
     // Decline friend request. sample request body {"senderId": "xxx"}
     app.put('/request/decline', MW.checkUserToken, UC.declineFrinedRequest)
-
-    // Get user messages by frined id.
-    app.get('/messages/:friendId', MW.checkUserToken, UC.getUserMessages)
-
-    // Send message. sample request body {"senderId": "_id value", friendId: "_id value", messageData: "" }
-    app.post('/message/send', MW.checkUserToken, UC.sendMessage)
-
-    // Delete message. sample request body {"friendId": "_id value", messageId: "_id value" }
-    app.delete('/message/delete', MW.checkUserToken, UC.deleteMessage)
 }
 
 module.exports = userRoutes

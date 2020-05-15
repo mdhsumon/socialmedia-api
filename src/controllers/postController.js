@@ -22,6 +22,7 @@ const createPost = (req, res) => {
         }
         if(files.photos) {
             FC.uploadFiles(files.photos, loggedUser.username, filePaths => {
+                console.log(filePaths)
                 let pathList = [], fileCoount = filePaths.length
                 for(let i = 0; i < fileCoount; i++) {
                     pathList.push({ path: filePaths[i] })
@@ -71,7 +72,7 @@ const getUserPosts = (req, res) => {
     PM.find(CA.validateId(req.params.userOrId) ? { "userInfo.userId": req.params.userOrId } : { "userInfo.username": req.params.userOrId })
     .sort({ createdAt: "desc" })
     .exec((err, posts) => {
-        if (err) throw err
+        if (err) res.json({ status: false, message: "Something went wrong" })
         else {
             posts.length ? res.json({ status: true, posts }) : res.json({ status: false, message: "No post found" })
         }
@@ -82,7 +83,7 @@ const getUserPosts = (req, res) => {
 const getUserFeeds = (req, res) => {
     // Find user friends
     UM.findOne(CA.userOrId(req), 'friends', (err, currentUser) => {
-        if (err) throw err
+        if (err) res.json({ status: false, message: "Something went wrong" })
         else {
             if(currentUser) {
                 let friendIds = []
@@ -102,7 +103,7 @@ const getUserFeeds = (req, res) => {
                     if (er) throw er
                     else {
                         UM.find({ _id: { $in: friendIds } }, "displayName profilePhoto", (err, userData) => {
-                            if (err) throw err
+                            if (err) res.json({ status: false, message: "Something went wrong" })
                             else {
                                 let feeds = CA.cloneObject(posts)
                                 feeds.map(post => {
@@ -115,7 +116,7 @@ const getUserFeeds = (req, res) => {
                                         // if(post.comments.length) {
                                         //     const commenters = post.comments.map(comment => comment.userId)
                                         //     UM.find({_id: { $in: commenters }}, "username displayName profilePhoto", (error, commentersInfo) => {
-                                        //         if(error) throw error
+                                        //         if(error) res.json({ status: false, message: "Something went wrong" })
                                         //         else {
                                         //             post.comments.map(com => {
                                         //                 const commenterData = commentersInfo.filter(item => item._id == com.userId)[0]
@@ -144,7 +145,7 @@ const getUserFeeds = (req, res) => {
 // Get post by id
 const getPostById = (req, res) => {
     PM.findById(req.params.postId, (err, post) => {
-        if (err) throw err
+        if (err) res.json({ status: false, message: "Something went wrong" })
         else post ? res.json({ status: true, post }) : res.json({ status: false, message: "No post found, Please check your post id" })
     })
 }
@@ -160,11 +161,11 @@ const updatePostById = (req, res) => {
     // Manage react/comment
     const manageAction = area => {
         PM.findOne({ _id: postId }, "userInfo", (err, post) => {
-            if (err) throw err
+            if (err) res.json({ status: false, message: "Something went wrong" })
             else {
                 // Check friend or not
                 UM.findOne({ _id: loggedUser.userId }, "friends username displayName profilePhoto", (err, userData) => {
-                    if (err) throw err
+                    if (err) res.json({ status: false, message: "Something went wrong" })
                     else {
                         // Push logged user
                         userData.friends.push({ friendId: loggedUser.userId, status: 'active' })
@@ -173,7 +174,7 @@ const updatePostById = (req, res) => {
                             switch (area) {
                                 case 'react':
                                     PM.findOne({_id: postId}, "reactions", (error, currentReactions) => {
-                                        if(error) throw error
+                                        if(error) res.json({ status: false, message: "Something went wrong" })
                                         else {
                                             if(react === 'like') {
                                                 PM.updateOne({_id: postId}, { "reactions.likes": 'a' })
@@ -191,7 +192,7 @@ const updatePostById = (req, res) => {
                                             { _id: postId },
                                             { $push: { comments: { userId: userData._id, message: data } } },
                                             error => {
-                                                if (error) throw error
+                                                if (error) res.json({ status: false, message: "Something went wrong" })
                                                 else {
                                                     res.json({ status: true, message: "Comment added successfully!" })
                                                 }
@@ -203,7 +204,7 @@ const updatePostById = (req, res) => {
                                             { _id: postId, "comments._id": req.body.commentId },
                                             { $set: { "comments.$.message": data } },
                                             error => {
-                                                if (error) throw error
+                                                if (error) res.json({ status: false, message: "Something went wrong" })
                                                 else {
                                                     res.json({ status: true, message: "Comment updated successfully!" })
                                                 }

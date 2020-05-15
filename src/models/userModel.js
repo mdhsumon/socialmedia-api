@@ -39,9 +39,9 @@ const userSchema = new mongoose.Schema({
 // Default profile photo depending on gender
 userSchema.pre('save', function(next) {
     if(!this.profilePhoto)
-    this.profilePhoto = '/file/global/image/' + (this.gender == 'male' ? 'male.png' : 'female.png')
+    this.profilePhoto = '/default/image/' + (this.gender == 'male' ? 'male.png' : 'female.png')
     if(!this.coverPhoto)
-    this.coverPhoto = '/file/global/image/cover.jpg'
+    this.coverPhoto = '/default/image/cover.png'
     next()
 })
 

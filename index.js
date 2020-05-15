@@ -3,9 +3,10 @@ const express = require('express')
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
 const commonRoutes = require('./src/routes/commonRoute')
-const fileRoutes = require('./src/routes/fileRoute')
 const userRoutes = require('./src/routes/userRoute')
+const chatRoutes = require('./src/routes/chatRoute')
 const postRoutes = require('./src/routes/postRoute')
+const fileRoutes = require('./src/routes/fileRoute')
 const cors = require('cors')
 
 const app = express()
@@ -24,9 +25,10 @@ app.use(cors())
 // All landing routes
 app.get('/', (req, res) => {res.json({message: "Welcome to landing page"})})
 
-// Passing app Object to routes
+// Passing app to routes
 commonRoutes(app)
 userRoutes(app)
+chatRoutes(app)
 postRoutes(app)
 fileRoutes(app)
 
