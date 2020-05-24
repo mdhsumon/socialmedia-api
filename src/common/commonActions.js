@@ -18,12 +18,13 @@ const userAuthorization = (user, password, callback) => {
 }
 
 // Token generator
-const createToken = (tokenPayload, tokenOptions) => {
+const createToken = (tokenPayload, options) => {
     const jwtSecrecKey = "tokensecrectkey"
-    tokenOptions = {
-        expiresIn: "1h"
-    } 
-    return jwt.sign(tokenPayload, jwtSecrecKey, tokenOptions)
+    const defaults = {
+        expiresIn: "30m"
+    }
+    const config = {...defaults, ...options}
+    return jwt.sign(tokenPayload, jwtSecrecKey, config)
 }
 
 // Verify user token

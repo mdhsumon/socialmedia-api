@@ -37,7 +37,7 @@ const postSchema = new mongoose.Schema({
         },
         comments: [
             {
-                commentedAt: { type: String, default: Date.now().toString() },
+                commentedAt: { type: String, default: Date.now },
                 updatedAt: { type: String },
                 userId: { type: String, required: true },
                 message: { type: String },
@@ -48,8 +48,9 @@ const postSchema = new mongoose.Schema({
                     }
                 ]
             }
-        ]
-    },
-    { timestamps: true }
+        ],
+        createdAt: { type: String, default: Date.now },
+        lastUpdatedAt: { type: String, default: Date.now }
+    }
 )
 module.exports = mongoose.model('Post', postSchema)

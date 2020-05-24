@@ -9,6 +9,9 @@ const createPost = (req, res) => {
     const loggedUser = CA.getLoggedUser(req)
     const form = new formidable.IncomingForm({multiples: true})
     form.parse(req, (error, fields, files) => {
+        let photosList = []
+        let videosList = []
+        let failedList = []
         // New post data
         let newPost = {
             visibility: fields.visibility,
@@ -17,52 +20,61 @@ const createPost = (req, res) => {
                 username: loggedUser.username
             },
             content: {
-                message: fields.message
+                message: fields.message,
+                attachment: {
+                    photos: [],
+                    videos: []
+                }
             }
         }
         if(files.photos) {
-            FC.uploadFiles(files.photos, loggedUser.username, filePaths => {
-                let pathList = [], fileCoount = filePaths.length
-                for(let i = 0; i < fileCoount; i++) {
-                    pathList.push({ path: filePaths[i] })
-                }
-                newPost.content.attachment = { photos: pathList }
+            FC.uploadFiles(files.photos, loggedUser.username, callback => {
+                callback.uploaded.map(item => {
+                    photosList.push({ path: item })
+                })
+                callback.failed && callback.failed.map(item => {
+                    failedList.push(item)
+                })
+                newPost.content.attachment.photos = photosList
             })
         }
-        else if(files.videos) {
-            FC.uploadFiles(files.videos, loggedUser.username, filePaths => {
-                let pathList = [], fileCoount = filePaths.length
-                for(let i = 0; i < fileCoount; i++) {
-                    pathList.push({ path: filePaths[i] })
-                }
-                newPost.content.attachment = { videos: pathList }
+        if(files.videos) {
+            FC.uploadFiles(files.videos, loggedUser.username, callback => {
+                callback.uploaded.map(item => {
+                    videosList.push({ path: item })
+                })
+                callback.failed && callback.failed.map(item => {
+                    failedList.push(item)
+                })
+                newPost.content.attachment.videos = videosList
             })
         }
-        PM.create(newPost, (createError, savedPost) => {
-            if (createError) {
-                res.json({
-                    createStatus: false,
-                    message: "Post not created"
-                })
-            }
-            else {
-                // Push profile info into created psot
-                UM.findOne({ _id: loggedUser.userId }, "displayName profilePhoto", (err, info) => {
-                    if (err) {
-                        res.json({
-                            createStatus: false,
-                            message: "Profile into pushing failed"
-                        })
-                    }
-                    else {
-                        let newClone = CA.cloneObject(savedPost)
-                        newClone.userInfo.displayName = info.displayName
-                        newClone.userInfo.profilePhoto = info.profilePhoto
-                        res.json({ status: true, createdPost: newClone})
-                    }
-                })
-            }
-        })
+        if(fields.message.length || photosList.length || videosList.length) {
+            UM.findOne({ _id: loggedUser.userId }, "displayName profilePhoto", (err, info) => {
+                if(err) {
+                    res.json({status: false, message: "User not found to create post"})
+                }
+                else {
+                    PM.create(newPost, (createError, savedPost) => {
+                        if(createError) {
+                            res.json({status: false, message: "Post not created"})
+                        }
+                        else {
+                            // Push profile info into created psot
+                            let clonedPost = CA.cloneObject(savedPost)
+                            clonedPost.userInfo.displayName = info.displayName
+                            clonedPost.userInfo.profilePhoto = info.profilePhoto
+                            failedList.length ?
+                            res.json({status: true, createdPost: clonedPost, failed: `File(s) not allowed: ${failedList}`}) :
+                            res.json({status: true, createdPost: clonedPost})
+                        }
+                    })
+                }
+            })
+        }
+        else {
+            res.json({status: false, message: "No post content provided"})
+        }
     })
 }
 

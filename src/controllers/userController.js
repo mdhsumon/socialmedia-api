@@ -134,10 +134,10 @@ const updateUser = (req, res) => {
         if(files.newProfile || files.newCover) {
             const fileObj = files.newProfile ? files.newProfile : files.newCover
             const photoType = files.newProfile ? "profilePhoto" : "coverPhoto"
-            FC.uploadFiles(fileObj, loggedUser.username, uploadedPath => {
-                if(uploadedPath) {
+            FC.uploadFiles(fileObj, loggedUser.username, callback => {
+                if(callback.uploaded.length) {
                     const newData = {
-                        [photoType]: uploadedPath[0]
+                        [photoType]: callback.uploaded[0]
                     }
                     UM.updateOne(query, newData, (err, raw) => {
                         if (err) res.json({ status: false, message: "Something went wrong" })
@@ -145,6 +145,9 @@ const updateUser = (req, res) => {
                             res.json({ status: true, message: `${photoType} updated` })
                         }
                     })
+                }
+                else {
+                    res.json({status: false, message: `File not allowed: ${callback.failed}`}) 
                 }
             })
         }

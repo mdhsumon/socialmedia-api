@@ -14,10 +14,17 @@ const createFolder = path => {
 // Upload files and return file paths
 const uploadFiles = (fileObjects, username, callback) => {
     let filePaths = []
+    let failedList = []
+
+    // Verify file extension
+    const verifyFile = extension => {
+        const filesAllowed = ['jpg', 'jpeg', 'png', '3gp', 'mp4', 'avi', 'flv', 'mkv', 'mov', 'pdf', 'doc', 'xls', 'ppt']
+        return filesAllowed.filter(ex => ex === extension.toLowerCase()).length ? true : false
+    }
 
     // File name formating. Sample: username-timestamp-filename.extension
     const formatFileName = name => {
-        const modifiedName = name.replace(/\s+|-+|#+/g, '_').toLowerCase()
+        const modifiedName = name.replace(/\s+|_+|#+/g, '-').toLowerCase()
         return /*username + '-' + */ Date.now().toString() + '-' + modifiedName
     }
 
@@ -27,10 +34,13 @@ const uploadFiles = (fileObjects, username, callback) => {
         const oldPath = file.path
         const fileType = file.type.split('/')
         const newPath = root.rootPath + '/src/resources/user/' + fileType[0] + 's/' + fileName
-        mv(oldPath, newPath, err => {
-            if(err) return callback([])
-        })
-        filePaths.push('/' + fileType[0] + '/' + fileName)
+        if(verifyFile(fileType[1])) {
+            mv(oldPath, newPath, err => err ? false: true)
+            filePaths.push('/' + fileType[0] + '/' + fileName)
+        }
+        else {
+            failedList.push(file.name)
+        }
     }
 
     if(fileObjects.length > 1) {
@@ -41,8 +51,7 @@ const uploadFiles = (fileObjects, username, callback) => {
     else {
         moveFile(fileObjects)
     }
-
-    callback(filePaths)
+    failedList.length ? callback({uploaded: filePaths, failed: failedList}) : callback({uploaded: filePaths})
 }
 
 // Global file serving
