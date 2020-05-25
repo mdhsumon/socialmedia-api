@@ -174,26 +174,39 @@ const updatePostById = (req, res) => {
                 UM.findOne({ _id: loggedUser.userId }, "friends status", (err, userData) => {
                     if (err) res.json({ status: false, message: "Something went wrong" })
                     else {
+                        // Pushed logged user for reacting self post
+                        userData.friends.push({status: 'active', friendId: loggedUser.userId})
                         const isFriend = userData.friends.filter(user => user.friendId === post.userInfo.userId)
                         if (isFriend.length) {
                             switch (area) {
                                 case 'react':
                                     if(action === 'like') {
-                                        console.log('like')
+                                        const findUser = post.reactions.likes.filter(id => id === loggedUser.userId).length
+                                        let newDoc, counter
+                                        if(findUser) {
+                                            counter = post.reactions.count - 1
+                                            newDoc = {
+                                                "reactions.count": counter,
+                                                $pull: {"reactions.likes": loggedUser.userId}
+                                            }
+                                        }
+                                        else {
+                                            counter = post.reactions.count + 1
+                                            newDoc = {
+                                                "reactions.count": counter,
+                                                $addToSet: {"reactions.likes": loggedUser.userId}
+                                            }
+                                        }
                                         PM.updateOne(
                                             {_id: postId},
-                                            {
-                                                "reactions.count": post.reactions.count + 1
-                                                //$push: {"reactions.likes": loggedUser.userId }
-                                            },
+                                            newDoc,
                                             (err, raw) => {
                                                 if(!err)
-                                                res.json({ status: true, message: "You have liked the post" })
-                                                console.log(post.reactions.count)
+                                                res.json({ status: true, count: counter, message: "You have liked the post" })
                                             }
                                         )
                                     }
-                                    else if(react === 'dislike') {
+                                    else if(react === 'emoji') {
                                        // PM.updateOne({_id: postId}, { "reactions.dislikes": 'a' })
                                     }
                                 break
