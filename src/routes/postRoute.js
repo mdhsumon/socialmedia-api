@@ -17,7 +17,7 @@ const postRoutes = app => {
         // Get sigle post
         .get(MW.checkUserToken, PC.getPostById)
 
-        // Update post. Sample body for react {"area": "react", "action": "like/dislike, "data": "like/dislike"}
+        // Update post. Sample body for react {"area": "react", "action": "like/emoji, "data": "emoji code"}
         // Update post. Sample body for comment {"area": "comment", "action": "add/edit", "data": "Comment message..."} if edit { commentId: ""}
         .put(MW.checkUserToken, PC.updatePostById)
 

@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema({
     birthDate: { type: String },
     location: { type: String },
     about: { type: String },
+    status: { type: String, default: "active" },
     friends: [
         {
             _id: false,

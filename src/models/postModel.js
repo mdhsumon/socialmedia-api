@@ -14,26 +14,9 @@ const postSchema = new mongoose.Schema({
             }
         },
         reactions: {
-            likes: {
-                count: { type: Number, default: 0 },
-                users: [
-                    {
-                        _id: false,
-                        userId: { type: String },
-                        reaction: { type: String, defult: 'like' }
-                    }
-                ]
-            },
-            dislikes: {
-                count: { type: Number, default: 0 },
-                users: [
-                    {
-                        _id: false,
-                        userId: { type: String },
-                        reaction: { type: String, defult: 'dislike' }
-                    }
-                ]
-            }
+            count: { type: Number, default: 0 },
+            likes: [{ userId: { type: String }}],
+            emojis: [{ userId: { type: String }}],
         },
         comments: [
             {

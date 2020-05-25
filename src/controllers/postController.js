@@ -80,7 +80,8 @@ const createPost = (req, res) => {
 
 // Get user posts
 const getUserPosts = (req, res) => {
-    PM.find(CA.validateId(req.params.userOrId) ? { "userInfo.userId": req.params.userOrId } : { "userInfo.username": req.params.userOrId })
+    const query = CA.validateId(req.params.userOrId) ? { "userInfo.userId": req.params.userOrId } : { "userInfo.username": req.params.userOrId }
+    PM.find(query)
     .sort({ createdAt: "desc" })
     .exec((err, posts) => {
         if (err) res.json({ status: false, message: "Something went wrong" })
@@ -97,17 +98,13 @@ const getUserFeeds = (req, res) => {
         if (err) res.json({ status: false, message: "Something went wrong" })
         else {
             if(currentUser) {
-                let friendIds = []
-                activeFrineds = currentUser.friends.filter(friend => friend.status == 'active')
-                for (let key in activeFrineds) {
-                    friendIds[key] = activeFrineds[key].friendId
-                }
+                let friendIds = currentUser.friends.filter(friend => friend.status === 'active').map(user => user.friendId)
                 // Pushed logged user
                 friendIds.push(`${currentUser._id}`)
                 // Get friends public post
                 PM.find({
                     "userInfo.userId": { $in: friendIds },
-                    visibility: "public"
+                    "$or": [{visibility: "public"}, {visibility: "friends"}]
                 })
                 .sort({ createdAt: "desc" })
                 .exec((er, posts) => {
@@ -168,33 +165,37 @@ const updatePostById = (req, res) => {
     const area = req.body.area
     const action = req.body.action
     const data = req.body.data
-
     // Manage react/comment
     const manageAction = area => {
-        PM.findOne({ _id: postId }, "userInfo", (err, post) => {
+        PM.findOne({ _id: postId }, "userInfo reactions", (err, post) => {
             if (err) res.json({ status: false, message: "Something went wrong" })
             else {
                 // Check friend or not
-                UM.findOne({ _id: loggedUser.userId }, "friends username displayName profilePhoto", (err, userData) => {
+                UM.findOne({ _id: loggedUser.userId }, "friends status", (err, userData) => {
                     if (err) res.json({ status: false, message: "Something went wrong" })
                     else {
-                        // Push logged user
-                        userData.friends.push({ friendId: loggedUser.userId, status: 'active' })
-                        const isFriend = userData.friends.filter(item => item.friendId === post.userInfo.userId)
+                        const isFriend = userData.friends.filter(user => user.friendId === post.userInfo.userId)
                         if (isFriend.length) {
                             switch (area) {
                                 case 'react':
-                                    PM.findOne({_id: postId}, "reactions", (error, currentReactions) => {
-                                        if(error) res.json({ status: false, message: "Something went wrong" })
-                                        else {
-                                            if(react === 'like') {
-                                                PM.updateOne({_id: postId}, { "reactions.likes": 'a' })
+                                    if(action === 'like') {
+                                        console.log('like')
+                                        PM.updateOne(
+                                            {_id: postId},
+                                            {
+                                                "reactions.count": post.reactions.count + 1
+                                                //$push: {"reactions.likes": loggedUser.userId }
+                                            },
+                                            (err, raw) => {
+                                                if(!err)
+                                                res.json({ status: true, message: "You have liked the post" })
+                                                console.log(post.reactions.count)
                                             }
-                                            else if(react === 'dislike') {
-                                                PM.updateOne({_id: postId}, { "reactions.dislikes": 'a' })
-                                            }
-                                        }
-                                    })
+                                        )
+                                    }
+                                    else if(react === 'dislike') {
+                                       // PM.updateOne({_id: postId}, { "reactions.dislikes": 'a' })
+                                    }
                                 break
                                 case 'comment':
                                     switch (action) {
@@ -236,7 +237,7 @@ const updatePostById = (req, res) => {
         })
     }
 
-    if (area && action && data) {
+    if (area && action || data) {
         if (area === 'react') {
             manageAction('react')
         }
@@ -254,14 +255,23 @@ const updatePostById = (req, res) => {
 
 // Delete post by id
 const deletePostById = (req, res) => {
-    PM.deleteOne({ _id: req.params.postId }, err => {
-        if (err) {
-            res.json({ status: false, message: "You are not allowed or invalid post id" })
+    const loggedUserId = CA.getLoggedUser(req).userId
+    PM.deleteOne(
+        {$and: [{ _id: req.params.postId }, { "userInfo.userId": loggedUserId }]},
+        (err, stat) => {
+            if (err) {
+                res.json({ status: false, message: "Something went wrong" })
+            }
+            else {
+                if(stat.deletedCount) {
+                    res.json({ status: true, message: "Post has been deleted" })
+                }
+                else {
+                    res.json({ status: false, message: "You are not allowed or invalid post id" })
+                }
+            }
         }
-        else {
-            res.json({ status: true, message: "Post has been deleted" })
-        }
-    })
+    )
 }
 
 module.exports = {
@@ -271,4 +281,4 @@ module.exports = {
     getPostById,
     updatePostById,
     deletePostById
-}
+} 
