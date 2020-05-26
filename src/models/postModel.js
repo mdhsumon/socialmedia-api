@@ -15,8 +15,8 @@ const postSchema = new mongoose.Schema({
         },
         reactions: {
             count: { type: Number, default: 0 },
-            likes: [{ type: String }],
-            emojis: [{ type: String }],
+            likes: [{ _id: false, userId: {type: String}, data: {type: String} }],
+            emojis: [{ _id: false,  userId: {type: String}, data: {type: String} }],
         },
         comments: [
             {

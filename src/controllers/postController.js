@@ -167,6 +167,35 @@ const updatePostById = (req, res) => {
     const data = req.body.data
     // Manage react/comment
     const manageAction = area => {
+        const manageReact = (post, type) => {
+            const findUser = [...post.reactions.likes, ...post.reactions.emojis].filter(item => item.userId === loggedUser.userId).length
+            const reactData = type === "emoji" ? data : "like"
+            const column = type === "emoji" ? "reactions.emojis" : "reactions.likes"
+            let newDoc, counter, dataObj = {}
+            dataObj[column] = {userId: loggedUser.userId, data: reactData}
+            if(findUser) {
+                counter = post.reactions.count - 1
+                newDoc = {
+                    "reactions.count": counter,
+                    $pull: dataObj
+                }
+            }
+            else {
+                counter = post.reactions.count + 1
+                newDoc = {
+                    "reactions.count": counter,
+                    $addToSet: dataObj
+                }
+            }
+            PM.updateOne(
+                {_id: postId},
+                newDoc,
+                (err, raw) => {
+                    if(!err)
+                    res.json({ status: true, count: counter, message: "You have liked the post" })
+                }
+            )
+        }
         PM.findOne({ _id: postId }, "userInfo reactions", (err, post) => {
             if (err) res.json({ status: false, message: "Something went wrong" })
             else {
@@ -181,33 +210,14 @@ const updatePostById = (req, res) => {
                             switch (area) {
                                 case 'react':
                                     if(action === 'like') {
-                                        const findUser = post.reactions.likes.filter(id => id === loggedUser.userId).length
-                                        let newDoc, counter
-                                        if(findUser) {
-                                            counter = post.reactions.count - 1
-                                            newDoc = {
-                                                "reactions.count": counter,
-                                                $pull: {"reactions.likes": loggedUser.userId}
-                                            }
-                                        }
-                                        else {
-                                            counter = post.reactions.count + 1
-                                            newDoc = {
-                                                "reactions.count": counter,
-                                                $addToSet: {"reactions.likes": loggedUser.userId}
-                                            }
-                                        }
-                                        PM.updateOne(
-                                            {_id: postId},
-                                            newDoc,
-                                            (err, raw) => {
-                                                if(!err)
-                                                res.json({ status: true, count: counter, message: "You have liked the post" })
-                                            }
-                                        )
+                                        manageReact(post, 'like')
+                                        console.log(post.reactions.likes)
                                     }
-                                    else if(react === 'emoji') {
-                                       // PM.updateOne({_id: postId}, { "reactions.dislikes": 'a' })
+                                    else if(action === 'emoji') {
+                                        manageReact(post, 'emoji')
+                                    }
+                                    else {
+                                        res.json({ status: false, message: "Invalid reaction requested" })
                                     }
                                 break
                                 case 'comment':
