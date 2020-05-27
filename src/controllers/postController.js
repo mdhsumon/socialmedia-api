@@ -160,7 +160,7 @@ const getPostById = (req, res) => {
 
 // Update post by id
 const updatePostById = (req, res) => {
-    const loggedUser = CA.getLoggedUser(req)
+    const loggedUser = CA.getLoggedUser(req).userId
     const postId = req.params.postId
     const area = req.body.area
     const action = req.body.action
@@ -168,13 +168,24 @@ const updatePostById = (req, res) => {
     // Manage react/comment
     const manageAction = area => {
         const manageReact = (post, type) => {
-            const findUser = [...post.reactions.likes, ...post.reactions.emojis].filter(item => item.userId === loggedUser.userId).length
+            const findUser = [...post.reactions.likes, ...post.reactions.emojis].filter(item => item.userId === loggedUser)[0]
             const reactData = type === "emoji" ? data : "like"
-            const column = type === "emoji" ? "reactions.emojis" : "reactions.likes"
+            let column = type === "emoji" ? "reactions.emojis" : "reactions.likes"
             let newDoc, counter, dataObj = {}
-            dataObj[column] = {userId: loggedUser.userId, data: reactData}
-            if(findUser) {
-                counter = post.reactions.count - 1
+            dataObj[column] = {userId: loggedUser, data: reactData}
+            console.log(type, findUser)
+            if(findUser && (findUser.data === "like" ? "like" : "emoji") !== type) {
+                let pullData = {}
+                column = type !== "emoji" ? "reactions.emojis" : "reactions.likes"
+                pullData[column] = {userId: loggedUser, data: findUser.data}
+                counter = post.reactions.count
+                newDoc = {
+                    $pull: pullData,
+                    $addToSet: dataObj,
+                }
+            }
+            else if(findUser) {
+                counter = post.reactions.count > 0 ? post.reactions.count - 1 : post.reactions.count
                 newDoc = {
                     "reactions.count": counter,
                     $pull: dataObj
@@ -192,7 +203,7 @@ const updatePostById = (req, res) => {
                 newDoc,
                 (err, raw) => {
                     if(!err)
-                    res.json({ status: true, count: counter, message: "You have liked the post" })
+                    res.json({ status: true, count: counter, message: `You have ${counter ? "reacted" : "pulled reaction"}` })
                 }
             )
         }
@@ -200,21 +211,17 @@ const updatePostById = (req, res) => {
             if (err) res.json({ status: false, message: "Something went wrong" })
             else {
                 // Check friend or not
-                UM.findOne({ _id: loggedUser.userId }, "friends status", (err, userData) => {
+                UM.findOne({ _id: loggedUser }, "friends status", (err, userData) => {
                     if (err) res.json({ status: false, message: "Something went wrong" })
                     else {
                         // Pushed logged user for reacting self post
-                        userData.friends.push({status: 'active', friendId: loggedUser.userId})
+                        userData.friends.push({status: 'active', friendId: loggedUser})
                         const isFriend = userData.friends.filter(user => user.friendId === post.userInfo.userId)
                         if (isFriend.length) {
                             switch (area) {
                                 case 'react':
-                                    if(action === 'like') {
-                                        manageReact(post, 'like')
-                                        console.log(post.reactions.likes)
-                                    }
-                                    else if(action === 'emoji') {
-                                        manageReact(post, 'emoji')
+                                    if(action === 'like' || action === 'emoji') {
+                                        manageReact(post, action)
                                     }
                                     else {
                                         res.json({ status: false, message: "Invalid reaction requested" })
