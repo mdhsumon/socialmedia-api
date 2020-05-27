@@ -161,27 +161,35 @@ const getPostById = (req, res) => {
 // Update post by id
 const updatePostById = (req, res) => {
     const loggedUser = CA.getLoggedUser(req).userId
+    const emojis = ['128150', '128525', '128516', '128578', '128545']
     const postId = req.params.postId
     const area = req.body.area
     const action = req.body.action
     const data = req.body.data
     // Manage react/comment
     const manageAction = area => {
-        const manageReact = (post, type) => {
+        const manageReact = post => {
             const findUser = [...post.reactions.likes, ...post.reactions.emojis].filter(item => item.userId === loggedUser)[0]
-            const reactData = type === "emoji" ? data : "like"
-            let column = type === "emoji" ? "reactions.emojis" : "reactions.likes"
-            let newDoc, counter, dataObj = {}
-            dataObj[column] = {userId: loggedUser, data: reactData}
-            console.log(type, findUser)
-            if(findUser && (findUser.data === "like" ? "like" : "emoji") !== type) {
-                let pullData = {}
-                column = type !== "emoji" ? "reactions.emojis" : "reactions.likes"
-                pullData[column] = {userId: loggedUser, data: findUser.data}
-                counter = post.reactions.count
-                newDoc = {
-                    $pull: pullData,
-                    $addToSet: dataObj,
+            let column = data === "like" ? "reactions.likes" : "reactions.emojis"
+            let newDoc, counter, condition = {_id: postId} , dataObj = {}
+            dataObj[column] = {userId: loggedUser, data: data}
+            if(findUser && findUser.data !== data) {
+                // Emoji swaping
+                if(data !== "like" && emojis.filter(emo => emo === findUser.data).length) {
+                    condition["reactions.emojis.userId"] = loggedUser
+                    newDoc = {
+                        $set: {"reactions.emojis.$.data": data}
+                    }
+                }
+                else {
+                    let pullData = {}
+                    column = data !== "like" ? "reactions.likes" : "reactions.emojis"
+                    pullData[column] = {userId: loggedUser, data: findUser.data}
+                    counter = post.reactions.count
+                    newDoc = {
+                        $pull: pullData,
+                        $addToSet: dataObj,
+                    }
                 }
             }
             else if(findUser) {
@@ -199,7 +207,7 @@ const updatePostById = (req, res) => {
                 }
             }
             PM.updateOne(
-                {_id: postId},
+                condition,
                 newDoc,
                 (err, raw) => {
                     if(!err)
@@ -220,8 +228,8 @@ const updatePostById = (req, res) => {
                         if (isFriend.length) {
                             switch (area) {
                                 case 'react':
-                                    if(action === 'like' || action === 'emoji') {
-                                        manageReact(post, action)
+                                    if(data === 'like' || emojis.filter(emo => emo === data).length) {
+                                        manageReact(post)
                                     }
                                     else {
                                         res.json({ status: false, message: "Invalid reaction requested" })
