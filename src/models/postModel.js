@@ -20,9 +20,9 @@ const postSchema = new mongoose.Schema({
         },
         comments: [
             {
+                userId: { type: String, required: true },
                 commentedAt: { type: String, default: Date.now },
                 updatedAt: { type: String },
-                userId: { type: String, required: true },
                 message: { type: String },
                 replies: [
                     {

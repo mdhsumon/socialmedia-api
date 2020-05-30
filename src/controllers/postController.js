@@ -9,9 +9,7 @@ const createPost = (req, res) => {
     const loggedUser = CA.getLoggedUser(req)
     const form = new formidable.IncomingForm({multiples: true})
     form.parse(req, (error, fields, files) => {
-        let photosList = []
-        let videosList = []
-        let failedList = []
+        let photosList = [], videosList = [], failedList = []
         // New post data
         let newPost = {
             visibility: fields.visibility,
@@ -50,7 +48,7 @@ const createPost = (req, res) => {
             })
         }
         if(fields.message.length || photosList.length || videosList.length) {
-            UM.findOne({ _id: loggedUser.userId }, "displayName profilePhoto", (err, info) => {
+            UM.findOne({ _id: loggedUser.userId }, "displayName profilePhoto coverPhoto", (err, info) => {
                 if(err) {
                     res.json({status: false, message: "User not found to create post"})
                 }
@@ -60,13 +58,9 @@ const createPost = (req, res) => {
                             res.json({status: false, message: "Post not created"})
                         }
                         else {
-                            // Push profile info into created psot
-                            let clonedPost = CA.cloneObject(savedPost)
-                            clonedPost.userInfo.displayName = info.displayName
-                            clonedPost.userInfo.profilePhoto = info.profilePhoto
                             failedList.length ?
-                            res.json({status: true, createdPost: clonedPost, failed: `File(s) not allowed: ${failedList}`}) :
-                            res.json({status: true, createdPost: clonedPost})
+                            res.json({status: true, createdPost: savedPost, failed: `File(s) not allowed: ${failedList}`}) :
+                            res.json({status: true, createdPost: savedPost})
                         }
                     })
                 }
@@ -110,36 +104,26 @@ const getUserFeeds = (req, res) => {
                 .exec((er, posts) => {
                     if (er) throw er
                     else {
-                        UM.find({ _id: { $in: friendIds } }, "displayName profilePhoto", (err, userData) => {
-                            if (err) res.json({ status: false, message: "Something went wrong" })
-                            else {
-                                let feeds = CA.cloneObject(posts)
-                                feeds.map(post => {
-                                    const info = userData.filter(data => data._id == post.userInfo.userId)[0]
-                                    if (info) {
-                                        post.userInfo.displayName = info.displayName
-                                        post.userInfo.profilePhoto = info.profilePhoto
-    
-                                        // Push user data into comments
-                                        // if(post.comments.length) {
-                                        //     const commenters = post.comments.map(comment => comment.userId)
-                                        //     UM.find({_id: { $in: commenters }}, "username displayName profilePhoto", (error, commentersInfo) => {
-                                        //         if(error) res.json({ status: false, message: "Something went wrong" })
-                                        //         else {
-                                        //             post.comments.map(com => {
-                                        //                 const commenterData = commentersInfo.filter(item => item._id == com.userId)[0]
-                                        //                 com.username = commenterData.username
-                                        //                 com.displayName = commenterData.displayName
-                                        //                 com.profilePhoto = commenterData.profilePhoto
-                                        //             })
-                                        //         }
-                                        //     })
-                                        // }
+                        let feeds = [...posts]
+                        feeds.map(feed => {
+                            // Push commenters info
+                            if(feed.comments.length) {
+                                const commenters = feed.comments.map(comment => comment.userId)
+                                UM.find({_id: { $in: commenters }}, "username displayName profilePhoto coverPhoto", (error, commentersInfo) => {
+                                    if(error) res.json({ status: false, message: "Something went wrong" })
+                                    else {
+                                        feed.comments.map(com => {
+                                            const commenterData = commentersInfo.filter(info => info._id == com.userId)[0]
+                                            com.username = commenterData.username
+                                            com.displayName = commenterData.displayName
+                                            com.profilePhoto = commenterData.profilePhoto
+                                            com.coverPhoto = commenterData.coverPhoto
+                                        })
                                     }
                                 })
-                                res.json({ status: true, posts: feeds })
                             }
                         })
+                        res.json({ status: true, posts: feeds })
                     }
                 })
             }
