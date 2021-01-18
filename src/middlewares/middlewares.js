@@ -29,7 +29,7 @@ const userLogin = (req, res) => {
             )
         } 
         else {
-            res.json({ status: false, message: "Authorization failed" })
+            res.status(404).json({ status: false, message: "Authorization failed" })
         }
     })
 }

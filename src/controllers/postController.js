@@ -10,64 +10,66 @@ const createPost = (req, res) => {
     const form = new formidable.IncomingForm({multiples: true})
     form.parse(req, (error, fields, files) => {
         let photosList = [], videosList = [], failedList = []
-        // New post data
-        let newPost = {
-            visibility: fields.visibility,
-            userInfo: {
-                userId: loggedUser.userId,
-                username: loggedUser.username
-            },
-            content: {
-                message: fields.message,
-                attachment: {
-                    photos: [],
-                    videos: []
+        if(fields.visibility && fields.message) {
+            // New post data
+            let newPost = {
+                visibility: ["public", "friends", "private"].indexOf(fields.visibility) > - 1 ? fields.visibility : "public",
+                userInfo: {
+                    userId: loggedUser.userId,
+                    username: loggedUser.username
+                },
+                content: {
+                    message: fields.message,
+                    attachment: {
+                        photos: [],
+                        videos: []
+                    }
                 }
             }
-        }
-        if(files.photos) {
-            FC.uploadFiles(files.photos, loggedUser.username, callback => {
-                callback.uploaded.map(item => {
-                    photosList.push({ path: item })
-                })
-                callback.failed && callback.failed.map(item => {
-                    failedList.push(item)
-                })
-                newPost.content.attachment.photos = photosList
-            })
-        }
-        if(files.videos) {
-            FC.uploadFiles(files.videos, loggedUser.username, callback => {
-                callback.uploaded.map(item => {
-                    videosList.push({ path: item })
-                })
-                callback.failed && callback.failed.map(item => {
-                    failedList.push(item)
-                })
-                newPost.content.attachment.videos = videosList
-            })
-        }
-        if(fields.message.length || photosList.length || videosList.length) {
-            UM.findOne({ _id: loggedUser.userId }, "displayName profilePhoto coverPhoto", (err, info) => {
-                if(err) {
-                    res.json({status: false, message: "User not found to create post"})
-                }
-                else {
-                    PM.create(newPost, (createError, savedPost) => {
-                        if(createError) {
-                            res.json({status: false, message: "Post not created"})
-                        }
-                        else {
-                            failedList.length ?
-                            res.json({status: true, createdPost: savedPost, failed: `File(s) not allowed: ${failedList}`}) :
-                            res.json({status: true, createdPost: savedPost})
-                        }
+            if(files.photos) {
+                FC.uploadFiles(files.photos, loggedUser.username, callback => {
+                    callback.uploaded.map(item => {
+                        photosList.push({ path: item })
                     })
-                }
-            })
+                    callback.failed && callback.failed.map(item => {
+                        failedList.push(item)
+                    })
+                    newPost.content.attachment.photos = photosList
+                })
+            }
+            if(files.videos) {
+                FC.uploadFiles(files.videos, loggedUser.username, callback => {
+                    callback.uploaded.map(item => {
+                        videosList.push({ path: item })
+                    })
+                    callback.failed && callback.failed.map(item => {
+                        failedList.push(item)
+                    })
+                    newPost.content.attachment.videos = videosList
+                })
+            }
+            if(fields.message.length || photosList.length || videosList.length) {
+                UM.findOne({ _id: loggedUser.userId }, "displayName profilePhoto coverPhoto", (err, info) => {
+                    if(err) {
+                        res.json({status: false, message: "User not found to create post"})
+                    }
+                    else {
+                        PM.create(newPost, (createError, savedPost) => {
+                            if(createError) {
+                                res.json({status: false, message: "Post not created"})
+                            }
+                            else {
+                                failedList.length ?
+                                res.json({status: true, createdPost: savedPost, failed: `File(s) not allowed: ${failedList}`}) :
+                                res.json({status: true, createdPost: savedPost})
+                            }
+                        })
+                    }
+                })
+            }
         }
         else {
-            res.json({status: false, message: "No post content provided"})
+            res.json({status: false, message: "Post content and visibility are required"})
         }
     })
 }
@@ -76,6 +78,7 @@ const createPost = (req, res) => {
 const getUserPosts = (req, res) => {
     const query = CA.validateId(req.params.userOrId) ? { "userInfo.userId": req.params.userOrId } : { "userInfo.username": req.params.userOrId }
     PM.find(query)
+    .limit(25)
     .sort({ createdAt: "desc" })
     .exec((err, posts) => {
         if (err) res.json({ status: false, message: "Something went wrong" })
@@ -88,7 +91,7 @@ const getUserPosts = (req, res) => {
 // Get user feeds
 const getUserFeeds = (req, res) => {
     // Find user friends
-    UM.findOne(CA.userOrId(req), 'friends', (err, currentUser) => {
+    UM.findOne(CA.userOrId(req.params.userOrId), 'friends', (err, currentUser) => {
         if (err) res.json({ status: false, message: "Something went wrong" })
         else {
             if(currentUser) {
@@ -100,11 +103,15 @@ const getUserFeeds = (req, res) => {
                     "userInfo.userId": { $in: friendIds },
                     "$or": [{visibility: "public"}, {visibility: "friends"}]
                 })
+                .limit(5)
                 .sort({ createdAt: "desc" })
                 .exec((er, posts) => {
-                    if (er) throw er
+                    if (er) res.json({ status: false, message: "Something went wrong" })
                     else {
-                        let feeds = [...posts]
+                        const feeds = CA.cloneObject(posts)
+                        // const updateFeeds = callb => {
+
+                        // }
                         feeds.map(feed => {
                             // Push commenters info
                             if(feed.comments.length) {
@@ -120,7 +127,9 @@ const getUserFeeds = (req, res) => {
                                             com.coverPhoto = commenterData.coverPhoto
                                         })
                                     }
+                                    setTimeout(()=> console.log(feeds.comments), 3000)
                                 })
+                                
                             }
                         })
                         res.json({ status: true, posts: feeds })

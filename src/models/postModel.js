@@ -1,6 +1,6 @@
 const mongoose = require("mongoose")
 const postSchema = new mongoose.Schema({
-        visibility: { type: String, require: true, default: "public" },
+        visibility: { type: String, required: true, default: "public" },
         userInfo: {
             userId: { type: String, required: true },
             username: { type: String, required: true }

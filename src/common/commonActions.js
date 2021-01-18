@@ -1,14 +1,14 @@
-const userModel = require("../models/userModel")
+const UM = require("../models/userModel")
 const jwt = require("jsonwebtoken")
 const mongoose = require("mongoose")
 
 // User authorisation by Email and Password.
 const userAuthorization = (user, password, callback) => {
-    userModel.findOne({ username: user }, (err, resData) => {
+    UM.findOne({"username": user}, "username userPass", (err, resData) => {
         if(err) throw err
         else {
-            if(resData){
-                callback(status = password == resData.userPass ? true : false, resData)
+            if(password == resData.userPass){
+                callback(true, resData)
             }
             else {
                 callback(false)
@@ -57,8 +57,8 @@ const toMongoId = strId => {
 }
 
 // Query generator for username or id
-const userOrId = req => {
-    return validateId(req.params.userOrId) ? { _id: req.params.userOrId } : { username: req.params.userOrId }
+const userOrId = user => {
+    return validateId(user) ? { _id: user } : { username: user }
 }
 
 module.exports = {

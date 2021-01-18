@@ -1,4 +1,5 @@
 const mongoose = require("mongoose")
+const bcrypt = require("bcrypt")
 
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true },
@@ -40,9 +41,19 @@ const userSchema = new mongoose.Schema({
 // Default profile photo depending on gender
 userSchema.pre('save', function(next) {
     if(!this.profilePhoto)
-    this.profilePhoto = '/default/image/' + (this.gender == 'male' ? 'male.png' : 'female.png')
+    this.profilePhoto = '/file/default/image/' + (this.gender == 'male' ? 'male.png' : 'female.png')
     if(!this.coverPhoto)
-    this.coverPhoto = '/default/image/cover.png'
+    this.coverPhoto = '/file/default/image/cover.png'
+    // Hashed password
+    const saltRound = 69
+    bcrypt.hash(this.userPass, saltRound, (err, hasedPass) => {
+        if(err) return next(err)
+        else {
+            this.userPass = hasedPass
+            console.log(hasedPass)
+        }
+        next()
+    })
     next()
 })
 

@@ -173,7 +173,7 @@ const updateUser = (req, res) => {
 
 // Delete user by username or id
 const deleteUser = (req, res) => {
-    const query = CA.userOrId(req)
+    const query = CA.userOrId(req.params.userOrId)
     UM.deleteOne(query, (err, user) => {
         if (err) res.json({ status: false, message: "Something went wrong" })
         else if (!user.deletedCount) res.json({ status: false, message: `User(${req.params.userOrId}) not found` })
@@ -184,15 +184,16 @@ const deleteUser = (req, res) => {
 // Get random friend suggestion
 const getFriendSuggestions = (req, res) => {
     const skipId = CA.getLoggedUser(req).userId
-    UM.find({
+    UM.find(
+    {
         _id: { $ne: skipId },
         "friends.friendId": { $ne: skipId },
         "friendRequests.senderId": { $ne: skipId },
         "sentRequests.friendId": { $ne: skipId }
     },
-        '_id username displayName profilePhoto coverPhoto',
+    '_id username displayName profilePhoto coverPhoto',
     )
-    .limit(50)
+    .limit(25)
     .exec((err, suggestions) => {
         if (err) res.json({ status: false, message: "Something went wrong" })
         else {
@@ -208,7 +209,7 @@ const getFriendSuggestions = (req, res) => {
 
 // Get friend lists
 const getFriendLists = (req, res) => {
-    const query = CA.userOrId(req)
+    const query = CA.userOrId(req.params.userOrId)
     UM.findOne(query, '-_id friends', (err, user) => {
         if (err) res.json({ status: false, message: "Something went wrong" })
         else {
@@ -219,7 +220,7 @@ const getFriendLists = (req, res) => {
 
 // Update user profile
 const getFrinedRequests = (req, res) => {
-    const query = CA.userOrId(req)
+    const query = CA.userOrId(req.params.userOrId)
     UM.findOne(query, '-_id friendRequests', (err, requests) => {
         if (err) res.json({ status: false, message: "Something went wrong" })
         else {
@@ -228,49 +229,56 @@ const getFrinedRequests = (req, res) => {
     })
 }
 
-// Get friedn request
+// Send friend request
 const sendFrinedRequest = (req, res) => {
-    const senderId = req.body.senderId
-    const toUser = req.body.toUser
-    UM.findOne({ username: toUser }, 'friends friendRequests', (err, resUserData) => {
-        if (err) res.json({ status: false, message: "Something went wrong" })
+    const senderId = CA.getLoggedUser(req).userId
+    const toUserId = req.params.toUserId
+    UM.findOne({_id: toUserId}, 'friends friendRequests', (err, resUserData) => {
+        if (err) res.json({ status: false, message: "Invalid id provided" })
         else {
-            const friendCount = resUserData.friends.filter(item => item.friendId === senderId).length
-            const requestCount = resUserData.friendRequests.filter(item => item.senderId === senderId).length
-            if (friendCount) {
-                res.json({ status: false, message: "You are already friend" })
-            }
-            else if (requestCount) {
-                res.json({ status: false, message: "You have already requested" })
+            if(resUserData && senderId !== toUserId) {
+                const friendCount = resUserData.friends.filter(item => item.friendId === senderId).length
+                const requestCount = resUserData.friendRequests.filter(item => item.senderId === senderId).length
+                if (friendCount) {
+                    res.json({ status: false, message: "You are already friend" })
+                }
+                else if (requestCount) {
+                    res.json({ status: false, message: "You have already requested" })
+                }
+                else {
+                    // Requested user friendRequests update
+                    UM.updateOne(
+                        {_id: toUserId},
+                        {
+                            $push: {
+                                friendRequests: { senderId: senderId }
+                            }
+                        },
+                        err => {
+                            if (err) res.json({ status: false, message: "Something went wrong" })
+                            else {
+                                // Sender sentRequests update
+                                UM.updateOne(
+                                    { _id: senderId },
+                                    {
+                                        $push: {
+                                            sentRequests: { friendId: resUserData._id }
+                                        }
+                                    },
+                                    err => {
+                                        if (err) res.json({ status: false, message: "Something went wrong" })
+                                        else {
+                                            res.json({ status: true, message: "Friend request has sent" })
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    )
+                }
             }
             else {
-                // Requested user friendRequests update
-                UM.updateOne(
-                    { username: toUser },
-                    {
-                        $push: {
-                            friendRequests: { senderId: senderId }
-                        }
-                    },
-                    err => {
-                        if (err) res.json({ status: false, message: "Something went wrong" })
-                        else {
-                            // Geter sentRequests update
-                            UM.updateOne(
-                                { _id: senderId },
-                                {
-                                    $push: {
-                                        sentRequests: { friendId: resUserData._id }
-                                    }
-                                },
-                                err => {
-                                    if (err) res.json({ status: false, message: "Something went wrong" })
-                                    else {
-                                        res.json({ status: true, message: "Friend request has sent" })
-                                    }
-                                })
-                        }
-                    })
+                res.json({ status: false, message: "Invalid username or id" })
             }
         }
     })
@@ -278,12 +286,13 @@ const sendFrinedRequest = (req, res) => {
 
 // Accept friedn request
 const acceptFrinedRequest = (req, res) => {
-    const senderId = req.body.senderId
+    const senderId = req.params.senderId
     const loggedUser = CA.getLoggedUser(req)
     UM.findOne({ username: loggedUser.username }, 'friends friendRequests', (err, resUserData) => {
         if (err) res.json({ status: false, message: "Something went wrong" })
         else {
             if (resUserData.friends.filter(friend => friend.friendId === senderId).length <= 0) {
+                // Update receiver
                 UM.updateOne(
                     { _id: resUserData._id },
                     {
@@ -345,9 +354,9 @@ const acceptFrinedRequest = (req, res) => {
     })
 }
 
-// Decline friedn request
+// Decline friend request
 const declineFrinedRequest = (req, res) => {
-    const senderId = req.body.senderId
+    const senderId = req.params.senderId
     const loggedUser = CA.getLoggedUser(req)
     UM.findOne({ username: loggedUser.username }, 'friendRequests', (err, resUserData) => {
         if (err) res.json({ status: false, message: "Something went wrong" })

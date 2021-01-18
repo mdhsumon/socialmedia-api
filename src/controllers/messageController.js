@@ -39,6 +39,22 @@ const sendMessage = (req, res) => {
     )
 }
 
+// Edit message
+const editMessage = (req, res) => {
+    const messageId = req.body.messageId
+    const message = req.body.messageData
+    CM.updateOne(
+        { userId: senderId, "messageList.friendId": friendId },
+        { $push: { "messageList.$.messages": { origin: 'self', message: message } } },
+        err => {
+            if (err) res.json({ status: false, message: "Something went wrong" })
+            else {
+                res.json({ status: true, message: "Message updated" })
+            }
+        }
+    )
+}
+
 // Get message
 const deleteMessage = (req, res) => {
     const loggedUser = CA.getLoggedUser(req)
@@ -55,5 +71,6 @@ const deleteMessage = (req, res) => {
 module.exports = {
     getUserMessages,
     sendMessage,
+    editMessage,
     deleteMessage
 }

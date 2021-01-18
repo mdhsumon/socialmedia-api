@@ -10,7 +10,7 @@ const getTableColumn = (req, res) => {
     })
 }
 
-// Get column data
+// Update column data
 const updateTableColumn = (req, res) => {
     const tableModel = req.params.table === 'user' ? UM : req.params.table === 'post' ? PM : ''
     tableModel.updateOne({_id: req.params.rowId}, req.body, err => {

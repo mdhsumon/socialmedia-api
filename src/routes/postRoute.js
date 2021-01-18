@@ -3,14 +3,14 @@ const MW = require("../middlewares/middlewares")
 
 const postRoutes = app => {
 
-    // Create post
-    app.post('/post/create', MW.checkUserToken, PC.createPost)
+    // Create post. Request data must be sent by form. Post message and visibility are requred.
+    app.post('/post', MW.checkUserToken, PC.createPost)
 
     // Get only user posts
-    app.get('/:userOrId/posts', MW.checkUserToken, PC.getUserPosts)
+    app.get('/posts/:userOrId', MW.checkUserToken, PC.getUserPosts)
 
     // Get user feeds
-    app.get('/:userOrId/feeds', MW.checkUserToken, PC.getUserFeeds)
+    app.get('/feeds/:userOrId', MW.checkUserToken, PC.getUserFeeds)
 
     app.route('/post/:postId')
     

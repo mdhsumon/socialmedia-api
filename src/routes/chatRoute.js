@@ -1,14 +1,18 @@
 const MC = require('../controllers/messageController')
 const MW = require('../middlewares/middlewares')
 const messageRoutes = app => {
-    // Get user messages by frined id.
+    // Get user messages against frined id.
     app.get('/messages/:friendId', MW.checkUserToken, MC.getUserMessages)
 
-    // Send message. sample request body {"senderId": "_id value", friendId: "_id value", messageData: "" }
-    app.post('/message/send', MW.checkUserToken, MC.sendMessage)
+    app.route('/message')
+    // Send message. sample request body {"senderId": "_id", friendId: "_id", messageData: "" }
+    app.post(MW.checkUserToken, MC.sendMessage)
 
-    // Delete message. sample request body {"friendId": "_id value", messageId: "_id value" }
-    app.delete('/message/delete', MW.checkUserToken, MC.deleteMessage)
+    // Edit message. sample request body {messageId: "_id", messageData: "" }
+    app.put(MW.checkUserToken, MC.editMessage)
+
+    // Delete message. sample request body {"friendId": "_id", messageId: "_id" }
+    app.delete(MW.checkUserToken, MC.deleteMessage)
 }
 
 module.exports = messageRoutes

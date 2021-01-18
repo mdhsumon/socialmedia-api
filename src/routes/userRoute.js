@@ -2,14 +2,15 @@ const UC = require('../controllers/userController')
 const MW = require('../middlewares/middlewares')
 const userRoutes = app => {
 
-    // Create new user
-    app.post('/signup', UC.createUser)
+    // Create new user. sample request body:
+    // {"displayName": "Display Name", "gender": "male/female", "username": "unique username", "userEmail": "unique email", "userPass": "password"}
+    app.post('/register', UC.createUser)
 
     // User login and return access token
     app.post('/login', MW.userLogin)
 
     // User logout
-    app.get('/logout', MW.userLogout)
+    app.post('/logout', MW.userLogout)
 
     // Check username or email exist or not
     app.get('/check/:type/:userOrEmail', UC.isUserExist)
@@ -20,32 +21,32 @@ const userRoutes = app => {
     // User operation by username or user id
     app.route('/user/:userOrId')
 
-    // Get user
+    // Get user full informatin
     .get(MW.checkUserToken, UC.getUser)
 
-    // Update user
+    // Update user information. Request form sample data...
     .put(MW.checkUserToken, UC.updateUser)
 
     // Delete user
     .delete(MW.checkUserToken, UC.deleteUser)
 
     // Get random friend suggestion
-    app.get('/friend/suggestions', MW.checkUserToken, UC.getFriendSuggestions)
+    app.get('/friend/suggestion', MW.checkUserToken, UC.getFriendSuggestions)
+
+    // Get friend list
+    app.get('/friends/:userOrId', MW.checkUserToken, UC.getFriendLists)
 
     // Get friend request list
-    app.get('/:userOrId/friends', MW.checkUserToken, UC.getFriendLists)
+    app.get('/requests/:userOrId', MW.checkUserToken, UC.getFrinedRequests)
 
-    // Get friend request list
-    app.get('/:userOrId/requests', MW.checkUserToken, UC.getFrinedRequests)
+    // Send friend request by username or id.
+    app.put('/request/send/:toUserId', MW.checkUserToken, UC.sendFrinedRequest)
 
-    // Send friend request. sample request body {"toUser": "username","senderId": "xxx"}
-    app.put('/request/send', MW.checkUserToken, UC.sendFrinedRequest)
+    // Accept friend request.
+    app.put('/request/accept/:senderId', MW.checkUserToken, UC.acceptFrinedRequest)
 
-    // Accept friend request. sample request body {"senderId": "xxx"}
-    app.put('/request/accept', MW.checkUserToken, UC.acceptFrinedRequest)
-
-    // Decline friend request. sample request body {"senderId": "xxx"}
-    app.put('/request/decline', MW.checkUserToken, UC.declineFrinedRequest)
+    // Decline friend request.
+    app.put('/request/decline/:senderId', MW.checkUserToken, UC.declineFrinedRequest)
 }
 
 module.exports = userRoutes
