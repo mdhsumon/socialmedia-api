@@ -5,14 +5,15 @@ const messageRoutes = app => {
     app.get('/messages/:friendId', MW.checkUserToken, MC.getUserMessages)
 
     app.route('/message')
-    // Send message. sample request body {"senderId": "_id", friendId: "_id", messageData: "" }
-    app.post(MW.checkUserToken, MC.sendMessage)
 
-    // Edit message. sample request body {messageId: "_id", messageData: "" }
-    app.put(MW.checkUserToken, MC.editMessage)
+    // Send message. Sample request body {friendId: "xxx", message: "" }
+    .post(MW.checkUserToken, MC.sendMessage)
 
-    // Delete message. sample request body {"friendId": "_id", messageId: "_id" }
-    app.delete(MW.checkUserToken, MC.deleteMessage)
+    // Edit message. sample request body {messageId: "xxx", message: "" }
+    .put(MW.checkUserToken, MC.editMessage)
+
+    // Delete message. Sample request body {"friendId": "xxx", messageId: "xxx" }
+    .delete(MW.checkUserToken, MC.deleteMessage)
 }
 
 module.exports = messageRoutes

@@ -76,69 +76,92 @@ const createPost = (req, res) => {
 
 // Get user posts
 const getUserPosts = (req, res) => {
-    const query = CA.validateId(req.params.userOrId) ? { "userInfo.userId": req.params.userOrId } : { "userInfo.username": req.params.userOrId }
-    PM.find(query)
-    .limit(25)
-    .sort({ createdAt: "desc" })
-    .exec((err, posts) => {
-        if (err) res.json({ status: false, message: "Something went wrong" })
-        else {
-            posts.length ? res.json({ status: true, posts }) : res.json({ status: false, message: "No post found" })
-        }
-    })
+    const postCount = 5
+    const loggedUserId = CA.getLoggedUser(req).userId
+    const otherUser = req.params.userOrId
+
+    const fetchPosts = query => {
+        PM.find(query)
+        .limit(postCount)
+        .sort({ createdAt: "desc" })
+        .exec((err, posts) => {
+            if (err) res.json({ status: false, message: "Something went wrong" })
+            else {
+                posts.length ? res.json({ status: true, posts }) : res.json({ status: false, message: "No post found" })
+            }
+        })
+    }
+
+    if(Object.keys(req.params).length) {
+        const userOrId = CA.userOrId(otherUser)
+        UM.findOne(userOrId, "friends", (err, user) => {
+            if(!err && user) {
+                const isFriend = user.friends.filter(fr => fr.friendId === loggedUserId)
+                let query = CA.validateId(otherUser) ? {"userInfo.userId": otherUser} : {"userInfo.username": otherUser}
+                const orCond = isFriend ? [{visibility: "friends"}, {visibility: "public"}] : [{visibility: "public"}]
+                query.$or = orCond
+                fetchPosts(query)
+            }
+            else {
+                res.json({ status: false, message: "Invalid user" })
+            }
+        })
+    }
+    else {
+        fetchPosts({"userInfo.userId": loggedUserId})
+    }
 }
 
 // Get user feeds
 const getUserFeeds = (req, res) => {
     // Find user friends
-    UM.findOne(CA.userOrId(req.params.userOrId), 'friends', (err, currentUser) => {
-        if (err) res.json({ status: false, message: "Something went wrong" })
+    const feedsCount = 5
+    const loggedUserId = CA.getLoggedUser(req).userId
+    UM.findOne({ _id: loggedUserId }, 'friends', (err, currentUser) => {
+        if (err) res.json({ status: false, message: "Something went wrong on user friends" })
         else {
-            if(currentUser) {
-                let friendIds = currentUser.friends.filter(friend => friend.status === 'active').map(user => user.friendId)
-                // Pushed logged user
-                friendIds.push(`${currentUser._id}`)
-                // Get friends public post
-                PM.find({
-                    "userInfo.userId": { $in: friendIds },
-                    "$or": [{visibility: "public"}, {visibility: "friends"}]
-                })
-                .limit(5)
-                .sort({ createdAt: "desc" })
-                .exec((er, posts) => {
-                    if (er) res.json({ status: false, message: "Something went wrong" })
-                    else {
-                        const feeds = CA.cloneObject(posts)
-                        // const updateFeeds = callb => {
-
-                        // }
-                        feeds.map(feed => {
-                            // Push commenters info
-                            if(feed.comments.length) {
-                                const commenters = feed.comments.map(comment => comment.userId)
-                                UM.find({_id: { $in: commenters }}, "username displayName profilePhoto coverPhoto", (error, commentersInfo) => {
-                                    if(error) res.json({ status: false, message: "Something went wrong" })
-                                    else {
-                                        feed.comments.map(com => {
-                                            const commenterData = commentersInfo.filter(info => info._id == com.userId)[0]
-                                            com.username = commenterData.username
-                                            com.displayName = commenterData.displayName
-                                            com.profilePhoto = commenterData.profilePhoto
-                                            com.coverPhoto = commenterData.coverPhoto
-                                        })
-                                    }
-                                    setTimeout(()=> console.log(feeds.comments), 3000)
-                                })
-                                
-                            }
-                        })
+            // Filter active user posts
+            let activeFriends = currentUser.friends.filter(friend => friend.status === 'active').map(user => user.friendId)
+            // Pushed logged user in friend list
+            activeFriends.push(`${loggedUserId}`)
+            PM.find({
+                "userInfo.userId": { $in: activeFriends },
+                $or: [{visibility: "public"}, {visibility: "friends"}]
+            })
+            .limit(feedsCount)
+            .sort({ createdAt: "desc" })
+            .exec((er, posts) => {
+                if (er) res.json({ status: false, message: "Something went wrong on post result" })
+                else {
+                    const feeds = CA.cloneObject(posts)
+                    feeds.map(feed => {
+                        // Push commenters info
+                        if(feed.comments.length) {
+                            const commenters = feed.comments.map(comment => comment.userId)
+                            UM.find({_id: { $in: commenters }}, "username displayName profilePhoto coverPhoto", (error, commentersInfo) => {
+                                if(error) res.json({ status: false, message: "Something went wrong" })
+                                else {
+                                    feed.comments.map(com => {
+                                        const commenterData = commentersInfo.filter(info => info._id == com.userId)[0]
+                                        com.username = commenterData.username
+                                        com.displayName = commenterData.displayName
+                                        com.profilePhoto = commenterData.profilePhoto
+                                        com.coverPhoto = commenterData.coverPhoto
+                                    })
+                                }
+                                setTimeout(()=> console.log(feeds.comments), 3000)
+                            })
+                            
+                        }
+                    })
+                    if(feeds.length) {
                         res.json({ status: true, posts: feeds })
                     }
-                })
-            }
-            else {
-                res.json({ status: false, message: "No feed found" })
-            }
+                    else {
+                        res.json({ status: false, message: "No feed found" })
+                    }
+                }
+            })
         }
     })
 }

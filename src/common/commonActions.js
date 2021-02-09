@@ -7,7 +7,7 @@ const userAuthorization = (user, password, callback) => {
     UM.findOne({"username": user}, "username userPass", (err, resData) => {
         if(err) throw err
         else {
-            if(password == resData.userPass){
+            if(resData && password == resData.userPass){
                 callback(true, resData)
             }
             else {
@@ -63,7 +63,7 @@ const userOrId = user => {
 
 module.exports = {
     userAuthorization,
-    createToken,
+    createToken, 
     verifyToken,
     getLoggedUser,
     cloneObject,

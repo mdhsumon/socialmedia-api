@@ -56,18 +56,51 @@ const uploadFiles = (fileObjects, username, callback) => {
 
 // Global file serving
 const getDefaultFile = (req, res) => {
-    const filePath = `./src/resources/default/${req.params.fileType}s/${req.params.fileName}`
-    res.sendFile(filePath, { root: root.rootPath }, err => {
-        if(err) res.json("Invalid url")
-    })
+    const fType = fileType(req.params.fileName)
+    console.log(fType, req.params.fileName)
+    if(fType) {
+        const filePath = `./src/resources/default/${fType}/${req.params.fileName}`
+        res.sendFile(filePath, { root: root.rootPath }, err => {
+            if(err) res.json("File not found")
+        })
+    }
+    else {
+        res.json({status: false, message: "Unsupported file"})
+    }
 }
 
 // User file serving
 const getUserFile = (req, res) => {
-    const filePath = `./src/resources/user/${req.params.fileType}s/${req.params.fileName}`
-    res.sendFile(filePath, { root: root.rootPath }, err => {
-        if(err) console.log("Not found: " + filePath)
-    })
+    const fType = fileType(req.params.fileName)
+    if(fType) {
+        const filePath = `./src/resources/user/${fType}/${req.params.fileName}`
+        res.sendFile(filePath, { root: root.rootPath }, err => {
+            if(err) res.json("File not found")
+        })
+    }
+    else {
+        res.json({status: false, message: "Unsupported file"})
+    }
+}
+
+// Verify file type and get folder name
+const fileType = name => {
+    const types = {
+        images: ["jpg", "png"],
+        audios: ["mp3"],
+        videos: ["mp4"],
+        files: ["pdf"]
+    }
+    const fName = name.split('.')
+    const extension = fName[fName.length - 1]
+    let type = null
+    for(let key in types) {
+        if(types[key].filter(t => t === extension).length) {
+            type = key
+            break
+        }
+    }
+    return type ? type : false
 }
 
 module.exports = {

@@ -6,11 +6,14 @@ const postRoutes = app => {
     // Create post. Request data must be sent by form. Post message and visibility are requred.
     app.post('/post', MW.checkUserToken, PC.createPost)
 
-    // Get only user posts
+    // Get logged user all post
+    app.get('/posts', MW.checkUserToken, PC.getUserPosts)
+
+    // Get user public/friends posts
     app.get('/posts/:userOrId', MW.checkUserToken, PC.getUserPosts)
 
-    // Get user feeds
-    app.get('/feeds/:userOrId', MW.checkUserToken, PC.getUserFeeds)
+    // Get logged user feeds
+    app.get('/feeds', MW.checkUserToken, PC.getUserFeeds)
 
     app.route('/post/:postId')
     
