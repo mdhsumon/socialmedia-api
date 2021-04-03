@@ -1,4 +1,4 @@
-const root = require('../../index')
+const root = require("../../index")
 const fs = require("fs")
 const mv = require("mv")
 const CA = require("../common/commonActions")
@@ -13,12 +13,12 @@ const createFolder = path => {
 
 // Upload files and return file paths
 const uploadFiles = (fileObjects, username, callback) => {
-    let filePaths = []
-    let failedList = []
+    const filePaths = []
+    const failedList = []
 
     // Verify file extension
     const verifyFile = extension => {
-        const filesAllowed = ['jpg', 'jpeg', 'png', '3gp', 'mp4', 'avi', 'flv', 'mkv', 'mov', 'pdf', 'doc', 'xls', 'ppt']
+        const filesAllowed = ["jpg", "jpeg", "png", "3gp", "mp4", "avi", "mkv", "mov", "pdf", "doc", "xls", "ppt"]
         return filesAllowed.filter(ex => ex === extension.toLowerCase()).length ? true : false
     }
 
@@ -33,10 +33,10 @@ const uploadFiles = (fileObjects, username, callback) => {
         const fileName = formatFileName(file.name)
         const oldPath = file.path
         const fileType = file.type.split('/')
-        const newPath = root.rootPath + '/src/resources/user/' + fileType[0] + 's/' + fileName
+        const newPath = root.rootPath + "/src/resources/user/" + fileType[0] + "s/" + fileName
         if(verifyFile(fileType[1])) {
             mv(oldPath, newPath, err => err ? false: true)
-            filePaths.push('/' + fileType[0] + '/' + fileName)
+            filePaths.push(fileName)
         }
         else {
             failedList.push(file.name)
@@ -57,15 +57,14 @@ const uploadFiles = (fileObjects, username, callback) => {
 // Global file serving
 const getDefaultFile = (req, res) => {
     const fType = fileType(req.params.fileName)
-    console.log(fType, req.params.fileName)
     if(fType) {
         const filePath = `./src/resources/default/${fType}/${req.params.fileName}`
         res.sendFile(filePath, { root: root.rootPath }, err => {
-            if(err) res.json("File not found")
+            //if(err) res.json("File not found")
         })
     }
     else {
-        res.json({status: false, message: "Unsupported file"})
+        res.json({status: false, message: "Unsupported file(s)"})
     }
 }
 
@@ -75,7 +74,7 @@ const getUserFile = (req, res) => {
     if(fType) {
         const filePath = `./src/resources/user/${fType}/${req.params.fileName}`
         res.sendFile(filePath, { root: root.rootPath }, err => {
-            if(err) res.json("File not found")
+            //if(err) res.json("File not found")
         })
     }
     else {
@@ -86,16 +85,16 @@ const getUserFile = (req, res) => {
 // Verify file type and get folder name
 const fileType = name => {
     const types = {
-        images: ["jpg", "png"],
+        images: ["jpg","jpeg","png"],
         audios: ["mp3"],
-        videos: ["mp4"],
-        files: ["pdf"]
+        videos: ["mp4","3gp","mov","avi","mkv"],
+        files: ["pdf","doc","xls","ppt"]
     }
-    const fName = name.split('.')
+    const fName = name.split(".")
     const extension = fName[fName.length - 1]
     let type = null
     for(let key in types) {
-        if(types[key].filter(t => t === extension).length) {
+        if(types[key].filter(t => t === extension.toLowerCase()).length) {
             type = key
             break
         }

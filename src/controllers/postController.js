@@ -10,73 +10,68 @@ const createPost = (req, res) => {
     const form = new formidable.IncomingForm({multiples: true})
     form.parse(req, (error, fields, files) => {
         let photosList = [], videosList = [], failedList = []
-        if(fields.visibility && fields.message) {
-            // New post data
-            let newPost = {
-                visibility: ["public", "friends", "private"].indexOf(fields.visibility) > - 1 ? fields.visibility : "public",
-                userInfo: {
-                    userId: loggedUser.userId,
-                    username: loggedUser.username
-                },
-                content: {
-                    message: fields.message,
-                    attachment: {
-                        photos: [],
-                        videos: []
-                    }
+        let newPost = {
+            visibility: ["public", "friends", "private"].indexOf(fields.visibility) > - 1 ? fields.visibility : "public",
+            userInfo: {
+                userId: loggedUser.userId,
+                username: loggedUser.username
+            },
+            content: {
+                message: fields.message,
+                attachment: {
+                    photos: [],
+                    videos: []
                 }
             }
-            if(files.photos) {
-                FC.uploadFiles(files.photos, loggedUser.username, callback => {
-                    callback.uploaded.map(item => {
-                        photosList.push({ path: item })
-                    })
-                    callback.failed && callback.failed.map(item => {
-                        failedList.push(item)
-                    })
-                    newPost.content.attachment.photos = photosList
-                })
-            }
-            if(files.videos) {
-                FC.uploadFiles(files.videos, loggedUser.username, callback => {
-                    callback.uploaded.map(item => {
-                        videosList.push({ path: item })
-                    })
-                    callback.failed && callback.failed.map(item => {
-                        failedList.push(item)
-                    })
-                    newPost.content.attachment.videos = videosList
-                })
-            }
-            if(fields.message.length || photosList.length || videosList.length) {
-                UM.findOne({ _id: loggedUser.userId }, "displayName profilePhoto coverPhoto", (err, info) => {
-                    if(err) {
-                        res.json({status: false, message: "User not found to create post"})
-                    }
-                    else {
-                        PM.create(newPost, (createError, savedPost) => {
-                            if(createError) {
-                                res.json({status: false, message: "Post not created"})
-                            }
-                            else {
-                                failedList.length ?
-                                res.json({status: true, createdPost: savedPost, failed: `File(s) not allowed: ${failedList}`}) :
-                                res.json({status: true, createdPost: savedPost})
-                            }
-                        })
-                    }
-                })
-            }
         }
-        else {
-            res.json({status: false, message: "Post content and visibility are required"})
+        if(files.photos) {
+            FC.uploadFiles(files.photos, loggedUser.username, callback => {
+                callback.uploaded.map(item => {
+                    photosList.push({ path: "/file/" + item })
+                })
+                callback.failed && callback.failed.map(item => {
+                    failedList.push(item)
+                })
+                newPost.content.attachment.photos = photosList
+            })
         }
+        if(files.videos) {
+            FC.uploadFiles(files.videos, loggedUser.username, callback => {
+                callback.uploaded.map(item => {
+                    videosList.push({ path: "/file/" + item })
+                })
+                callback.failed && callback.failed.map(item => {
+                    failedList.push(item)
+                })
+                newPost.content.attachment.videos = videosList
+            })
+        }
+        if(fields.message || photosList.length || videosList.length) {
+            UM.findOne({ _id: loggedUser.userId }, "displayName profilePhoto coverPhoto", (err, info) => {
+                if(err) {
+                    res.json({status: false, message: "No user found to create post"})
+                }
+                else {
+                    PM.create(newPost, (err, savedPost) => {
+                        if(err) {
+                            res.json({status: false, message: "Post not created"})
+                        }
+                        else {
+                            failedList.length ?
+                            res.json({status: true, createdPost: savedPost, failed: `File(s) not allowed: ${failedList}`}) :
+                            res.json({status: true, createdPost: savedPost})
+                        }
+                    })
+                }
+            })
+        }
+        else res.json({status: false, message: "Empty post content"})
     })
 }
 
 // Get user posts
 const getUserPosts = (req, res) => {
-    const postCount = 5
+    const postCount = 10
     const loggedUserId = CA.getLoggedUser(req).userId
     const otherUser = req.params.userOrId
 
@@ -115,13 +110,13 @@ const getUserPosts = (req, res) => {
 // Get user feeds
 const getUserFeeds = (req, res) => {
     // Find user friends
-    const feedsCount = 5
+    const feedsCount = 10
     const loggedUserId = CA.getLoggedUser(req).userId
-    UM.findOne({ _id: loggedUserId }, 'friends', (err, currentUser) => {
+    UM.findOne({ _id: loggedUserId }, "friends", (err, currentUser) => {
         if (err) res.json({ status: false, message: "Something went wrong on user friends" })
         else {
             // Filter active user posts
-            let activeFriends = currentUser.friends.filter(friend => friend.status === 'active').map(user => user.friendId)
+            let activeFriends = currentUser.friends.filter(friend => friend.status === "active").map(user => user.userId)
             // Pushed logged user in friend list
             activeFriends.push(`${loggedUserId}`)
             PM.find({
@@ -149,7 +144,6 @@ const getUserFeeds = (req, res) => {
                                         com.coverPhoto = commenterData.coverPhoto
                                     })
                                 }
-                                setTimeout(()=> console.log(feeds.comments), 3000)
                             })
                             
                         }
@@ -177,7 +171,7 @@ const getPostById = (req, res) => {
 // Update post by id
 const updatePostById = (req, res) => {
     const loggedUser = CA.getLoggedUser(req).userId
-    const emojis = ['128150', '128525', '128516', '128578', '128545']
+    const emojis = ["128150", "128525", "128516", "128578", "128545"]
     const postId = req.params.postId
     const area = req.body.area
     const action = req.body.action
@@ -187,7 +181,7 @@ const updatePostById = (req, res) => {
         const manageReact = post => {
             const findUser = [...post.reactions.likes, ...post.reactions.emojis].filter(item => item.userId === loggedUser)[0]
             let column = data === "like" ? "reactions.likes" : "reactions.emojis"
-            let newDoc, counter, condition = {_id: postId} , dataObj = {}
+            let newDoc, counter, condition = {_id: postId}, dataObj = {}
             dataObj[column] = {userId: loggedUser, data: data}
             if(findUser && findUser.data !== data) {
                 // Emoji swaping
@@ -222,36 +216,33 @@ const updatePostById = (req, res) => {
                     $addToSet: dataObj
                 }
             }
-            PM.updateOne(
-                condition,
-                newDoc,
-                (err, raw) => {
-                    if(!err)
-                    res.json({ status: true, count: counter, message: `You have ${counter ? "reacted" : "pulled reaction"}` })
+            PM.updateOne(condition, newDoc, (err, raw) => {
+                    if(err || !raw.nModified) res.json({ status: false, message: "Error" })
+                    else res.json({ status: true, count: counter, message: `You have ${counter ? "reacted" : "pulled reaction"}` })
                 }
             )
         }
         PM.findOne({ _id: postId }, "userInfo reactions", (err, post) => {
-            if (err) res.json({ status: false, message: "Something went wrong" })
+            if(err) res.json({ status: false, message: "Post not found" })
             else {
                 // Check friend or not
-                UM.findOne({ _id: loggedUser }, "friends status", (err, userData) => {
-                    if (err) res.json({ status: false, message: "Something went wrong" })
+                UM.findOne({ _id: loggedUser }, "friends", (err, userData) => {
+                    if(err) res.json({ status: false, message: "Something went wrong" })
                     else {
-                        // Pushed logged user for reacting self post
-                        userData.friends.push({status: 'active', friendId: loggedUser})
-                        const isFriend = userData.friends.filter(user => user.friendId === post.userInfo.userId)
+                        // Pushed logged user for reacting own post
+                        userData.friends.push({status: "active", userId: loggedUser})
+                        const isFriend = userData.friends.filter(user => user.userId === post.userInfo.userId)
                         if (isFriend.length) {
                             switch (area) {
-                                case 'react':
-                                    if(data === 'like' || emojis.filter(emo => emo === data).length) {
+                                case "react":
+                                    if(data === "like" || emojis.filter(emo => emo === data).length) {
                                         manageReact(post)
                                     }
                                     else {
                                         res.json({ status: false, message: "Invalid reaction requested" })
                                     }
                                 break
-                                case 'comment':
+                                case "comment":
                                     switch (action) {
                                         case "add":
                                             PM.updateOne(
@@ -283,7 +274,7 @@ const updatePostById = (req, res) => {
                             }
                         }
                         else {
-                            res.json({ status: false, message: "You are not friend or allowed to comment" })
+                            res.json({ status: false, message: "You are not friend" })
                         }
                     }
                 })
@@ -292,11 +283,11 @@ const updatePostById = (req, res) => {
     }
 
     if (area && action || data) {
-        if (area === 'react') {
-            manageAction('react')
+        if (area === "react") {
+            manageAction("react")
         }
-        else if (area === 'comment') {
-            manageAction('comment')
+        else if (area === "comment") {
+            manageAction("comment")
         }
         else {
             res.json({ status: false, message: "Invalid area data" })

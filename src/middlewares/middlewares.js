@@ -12,13 +12,13 @@ const userLogin = (req, res) => {
             )
             // Store login data
             LM.updateOne(
-                {userId: userData._id},
+                {_id: userData._id},
                 {
                     username: userData.username,
                     accessToken: token,
                     tokenExpire: tokenExpire,
                     lastLogin: Date.now().toString(),
-                    onlineStatus: 'online'
+                    onlineStatus: "online"
                 },
                 err => {
                     if(err) res.json({ status: false, message: "Something went wrong" })
@@ -36,15 +36,16 @@ const userLogin = (req, res) => {
 
 // User logout and destroy token
 const userLogout = (req, res) => {
+    const loggedUser = CA.getLoggedUser(req).userId
     if (true) {
         // Remove login data
         LM.updateOne(
-            {username: 'delower'},
+            {_id: loggedUser},
             {
-                accessToken: '',
-                tokenExpire: '',
+                accessToken: "",
+                tokenExpire: "",
                 lastLogout: Date.now().toString(),
-                onlineStatus: 'offline'
+                onlineStatus: "offline"
             },
             err => {
                 if(err) res.json({ status: false, message: "Something went wrong" })

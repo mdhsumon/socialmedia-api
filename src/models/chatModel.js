@@ -1,19 +1,19 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose")
 
 const chatSchema = new mongoose.Schema({
-        _id: { type: Number },
-        userId: { type: String },
-        status: { type: String, default: 'active' },
+        status: { type: String, default: "active" },
         messageList: [
             {
                 _id: false,
-                friendId: { type: String, reqired: true },
+                userId: { type: String, reqired: true },
                 messages: [
                     {
+                        messageId: { type: String, required: true },
                         origin: { type: String, reqired: true },
                         message: { type: String },
-                        readStatus: { type: String, default: 'unread' },
-                        time: { type: String, default: Date.now }
+                        readStatus: { type: String, default: "unread" },
+                        edited: { type: Boolean, default: false },
+                        time: { type: String, required: true, default: Date.now() }
                     }
                 ]
             }
@@ -21,4 +21,4 @@ const chatSchema = new mongoose.Schema({
     }
 )
 
-module.exports = mongoose.model('chat', chatSchema)
+module.exports = mongoose.model("chat", chatSchema)

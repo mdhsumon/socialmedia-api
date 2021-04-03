@@ -1,15 +1,15 @@
-const CM = require('../models/chatModel')
-const CA = require('../common/commonActions')
-const UM = require('../models/userModel')
+const CM = require("../models/chatModel")
+const CA = require("../common/commonActions")
+const UM = require("../models/userModel")
 
 // Get user all messages
 const getUserMessages = (req, res) => {
-    const loggedUser = CA.getLoggedUser(req)
+    const loggedUser = CA.getLoggedUser(req).userId
     CM.find(
-        { userId: loggedUser.userId,  "messageList.friendId": req.params.friendId },
-        "messageList.messages",
+        { _id: loggedUser,  "messageList.userId": req.params.friendId },
+        "messageList.$.messages",
         (err, messageData) => {
-            if (err) res.json({ status: false, message: "Something went wrong" })
+            if(err) res.json({ status: false, message: "Something went wrong" })
             else {
                 res.json(messageData.length ?
                     { status: true, messageList: messageData[0].messageList[0].messages } :
@@ -25,50 +25,72 @@ const sendMessage = (req, res) => {
     const senderId = CA.getLoggedUser(req).userId
     const friendId = req.body.friendId
     const message = req.body.message
-    UM.findOne({ _id: senderId}, "friends", (err, senderFriends) => {
-        if (err) res.json({ status: false, message: "Something went wrong on find friend" })
-        else {
-            const isFriend = senderFriends.friends.filter(f => f.friendId === friendId).length
-            if(isFriend) {
+    const timestamp = Date.now()
+    CM.updateOne(
+        { _id: senderId, "messageList.userId": friendId },
+        { $push: { "messageList.$.messages": { messageId: timestamp, origin: "self", message: message, time: timestamp } } },
+        (err, raw) => {
+            if(err) res.json({ status: false, message: "Something went wrong on sender" })
+            else if(!raw.n) res.json({ status: false, message: "Invalid friend id" })
+            else {
+                // Store user/other message
                 CM.updateOne(
-                    { userId: senderId, "messageList.friendId": friendId },
-                    { $push: { "messageList.$.messages": { origin: "self", message: message } } },
+                    { _id: friendId, "messageList.userId": senderId },
+                    { $push: { "messageList.$.messages": { messageId: timestamp, origin: "other", message: message, time: timestamp } } },
                     err => {
-                        if (err) res.json({ status: false, message: "Something went wrong on sender" })
+                        if(err) res.json({ status: false, message: "Something went wrong on other" })
                         else {
-                            // Store user/other message
-                            CM.updateOne(
-                                { userId: friendId, "messageList.friendId": senderId },
-                                { $push: { "messageList.$.messages": { origin: "other", message: message } } },
-                                (err, raw) => {
-                                    if (err) res.json({ status: false, message: "Something went wrong on other" })
-                                    else {
-                                        res.json({ status: true, message: "Message has been sent" })
-                                    }
+                            res.json({ 
+                                status: true,
+                                messageData: {
+                                    _id: timestamp,
+                                    origin: "self",
+                                    message: message,
+                                    time: timestamp,
+                                    readStatus: "unread",
+                                    edited: false
                                 }
-                            )
+                            })
                         }
                     }
                 )
             }
-            else {
-                res.json({ status: false, message: "You are not friend with the user" })
-            }
         }
-    })
+    )
 }
 
 // Edit message
 const editMessage = (req, res) => {
+    const senderId = CA.getLoggedUser(req).userId
+    const friendId = req.body.friendId
     const messageId = req.body.messageId
-    const message = req.body.messageData
+    const message = req.body.message
     CM.updateOne(
-        { userId: senderId, "messageList.friendId": friendId },
-        { $push: { "messageList.$.messages": { origin: 'self', message: message } } },
-        err => {
-            if (err) res.json({ status: false, message: "Something went wrong" })
+        { _id: senderId },
+        { $set: {
+            "messageList.$[f].messages.$[m].message": message,
+            "messageList.$[f].messages.$[m].edited": true }
+        },
+        { arrayFilters: [{"f.friendId": friendId}, {"m.messageId": messageId}] },
+        (err, raw) => {
+            if(err) res.json({ status: false, message: "Something went wrong" })
+            else if(!raw.nModified) res.json({ status: false, message: "Message not updated" })
             else {
-                res.json({ status: true, message: "Message updated" })
+                CM.updateOne(
+                    { _id: friendId },
+                    { $set: {
+                        "messageList.$[f].messages.$[m].message": message,
+                        "messageList.$[f].messages.$[m].edited": true }
+                    },
+                    { arrayFilters: [{"f.friendId": friendId}, {"m.messageId": messageId}] },
+                    (err, raw) => {
+                        if(err) res.json({ status: false, message: "Something went wrong" })
+                        else if(!raw.nModified) res.json({ status: false, message: "Message not updated" })
+                        else {
+                            res.json({ status: true, message: "Message updated" })
+                        }
+                    }
+                )
             }
         }
     )
@@ -76,15 +98,17 @@ const editMessage = (req, res) => {
 
 // Get message
 const deleteMessage = (req, res) => {
-    const loggedUser = CA.getLoggedUser(req)
+    const loggedUser = CA.getLoggedUser(req).userId
     CM.updateOne(
-        { userId: loggedUser.userId, "messageList.friendId": req.body.friendId  },
-        { $pull: {"messageList.$.messages": {_id: req.body.messageId}} }, (err, raw) => {
-        if (err) res.json({ status: false, message: "Something went wrong" })
-        else {
-            res.json({ status: true, message: "Message has been deleted" })
+        { _id: loggedUser, "messageList.userId": req.body.friendId  },
+        { $pull: {"messageList.$.messages": {_id: req.body.messageId}} },
+        (err, raw) => {
+            if(err) res.json({ status: false, message: "Something went wrong" })
+            else {
+                res.json({ status: true, message: "Message has been deleted" })
+            }
         }
-    })
+    )
 }
 
 module.exports = {
