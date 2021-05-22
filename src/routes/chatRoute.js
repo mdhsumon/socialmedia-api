@@ -1,7 +1,7 @@
 const MC = require("../controllers/messageController")
 const MW = require("../middlewares/middlewares")
 const messageRoutes = app => {
-    // Get user messages against frined id.
+    // Get user messages by frined id.
     app.get("/messages/:friendId", MW.checkUserToken, MC.getUserMessages)
 
     app.route("/message")

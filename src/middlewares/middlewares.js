@@ -36,28 +36,22 @@ const userLogin = (req, res) => {
 
 // User logout and destroy token
 const userLogout = (req, res) => {
-    const loggedUser = CA.getLoggedUser(req).userId
-    if (true) {
-        // Remove login data
-        LM.updateOne(
-            {_id: loggedUser},
-            {
-                accessToken: "",
-                tokenExpire: "",
-                lastLogout: Date.now().toString(),
-                onlineStatus: "offline"
-            },
-            err => {
-                if(err) res.json({ status: false, message: "Something went wrong" })
-                else {
-                    res.json({ status: true, message: "Logout successfull" })
-                }
+    const loggedUserId = CA.getLoggedUser(req).userId
+    // Remove login data
+    LM.updateOne(
+        {_id: loggedUserId},
+        {
+            accessToken: "",
+            tokenExpire: "",
+            lastLogout: Date.now().toString()
+        },
+        err => {
+            if(err) res.json({ status: false, message: "Something went wrong" })
+            else {
+                res.json({ status: true, message: "Logout successfull" })
             }
-        )
-    } 
-    else {
-        res.json({ status: false, message: "You are already logged out" })
-    }
+        }
+    )
 }
 
 // Verify user token

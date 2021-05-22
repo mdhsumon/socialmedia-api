@@ -6,12 +6,12 @@ const UM = require("../models/userModel")
 const getUserMessages = (req, res) => {
     const loggedUser = CA.getLoggedUser(req).userId
     CM.find(
-        { _id: loggedUser,  "messageList.userId": req.params.friendId },
-        "messageList.$.messages",
+        { _id: loggedUser, "messageList.userId": req.params.friendId },
+        "messageList.$",
         (err, messageData) => {
             if(err) res.json({ status: false, message: "Something went wrong" })
             else {
-                res.json(messageData.length ?
+                res.json(messageData[0].messageList[0].messages.length ?
                     { status: true, messageList: messageData[0].messageList[0].messages } :
                     { status: false, message: "No message found" }
                 )
@@ -28,7 +28,7 @@ const sendMessage = (req, res) => {
     const timestamp = Date.now()
     CM.updateOne(
         { _id: senderId, "messageList.userId": friendId },
-        { $push: { "messageList.$.messages": { messageId: timestamp, origin: "self", message: message, time: timestamp } } },
+        { $push: { "messageList.$.messages": { origin: "self", message: message, createdAt: timestamp } } },
         (err, raw) => {
             if(err) res.json({ status: false, message: "Something went wrong on sender" })
             else if(!raw.n) res.json({ status: false, message: "Invalid friend id" })
@@ -36,7 +36,7 @@ const sendMessage = (req, res) => {
                 // Store user/other message
                 CM.updateOne(
                     { _id: friendId, "messageList.userId": senderId },
-                    { $push: { "messageList.$.messages": { messageId: timestamp, origin: "other", message: message, time: timestamp } } },
+                    { $push: { "messageList.$.messages": { origin: "other", message: message, createdAt: timestamp } } },
                     err => {
                         if(err) res.json({ status: false, message: "Something went wrong on other" })
                         else {

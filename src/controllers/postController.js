@@ -82,7 +82,53 @@ const getUserPosts = (req, res) => {
         .exec((err, posts) => {
             if (err) res.json({ status: false, message: "Something went wrong" })
             else {
-                posts.length ? res.json({ status: true, posts }) : res.json({ status: false, message: "No post found" })
+                if(posts.length) {
+                    // Pushing commenters summary
+                    const postData = CA.cloneObject(posts)
+                    const comsReps = []
+                    postData.map(post => {
+                        if(post.comments.length) {
+                            post.comments.map(com => {
+                                comsReps.push(com.userId)
+                                if(com.replies.length)
+                                com.replies.map(rep => comsReps.push(rep.userId))
+                            })
+                        }
+                    })
+                    if(comsReps.length) {
+                        UM.find(
+                            {_id: {$in: comsReps}},
+                            "username displayName profilePhoto coverPhoto",
+                            (err, users) => {
+                                if(!err && users.length) {
+                                    postData.map(post => {
+                                        if(post.comments.length) {
+                                            post.comments.map(com => {
+                                                const userInfo = users.filter(user => user._id == com.userId)[0]
+                                                com.username = userInfo.username
+                                                com.displayName = userInfo.displayName
+                                                com.profilePhoto = userInfo.profilePhoto
+                                                com.coverPhoto = userInfo.coverPhoto
+                                                if(com.replies.length) {
+                                                    com.replies.map(rep => {
+                                                        const userInfo = users.filter(user => user._id == rep.userId)[0]
+                                                        rep.username = userInfo.username
+                                                        rep.displayName = userInfo.displayName
+                                                        rep.profilePhoto = userInfo.profilePhoto
+                                                        rep.coverPhoto = userInfo.coverPhoto
+                                                    })
+                                                }
+                                            })
+                                        }
+                                    })
+                                    res.json({status: true, posts: postData})
+                                }
+                            }
+                        )
+                    }
+                    else res.json({status: true, posts})
+                }
+                else res.json({status: false, message: "No post found"})
             }
         })
     }
@@ -126,30 +172,53 @@ const getUserFeeds = (req, res) => {
             .limit(feedsCount)
             .sort({ createdAt: "desc" })
             .exec((er, posts) => {
-                if (er) res.json({ status: false, message: "Something went wrong on post result" })
+                if(er) res.json({ status: false, message: "Something went wrong on post result" })
                 else {
-                    const feeds = CA.cloneObject(posts)
-                    feeds.map(feed => {
-                        // Push commenters info
-                        if(feed.comments.length) {
-                            const commenters = feed.comments.map(comment => comment.userId)
-                            UM.find({_id: { $in: commenters }}, "username displayName profilePhoto coverPhoto", (error, commentersInfo) => {
-                                if(error) res.json({ status: false, message: "Something went wrong" })
-                                else {
-                                    feed.comments.map(com => {
-                                        const commenterData = commentersInfo.filter(info => info._id == com.userId)[0]
-                                        com.username = commenterData.username
-                                        com.displayName = commenterData.displayName
-                                        com.profilePhoto = commenterData.profilePhoto
-                                        com.coverPhoto = commenterData.coverPhoto
-                                    })
+                    if(posts.length) {
+                        // Pushing commenters summary
+                        const postData = CA.cloneObject(posts)
+                        const comsReps = []
+                        postData.map(post => {
+                            if(post.comments.length) {
+                                post.comments.map(com => {
+                                    comsReps.push(com.userId)
+                                    if(com.replies.length)
+                                    com.replies.map(rep => comsReps.push(rep.userId))
+                                })
+                            }
+                        })
+                        if(comsReps.length) {
+                            UM.find(
+                                {_id: {$in: comsReps}},
+                                "username displayName profilePhoto coverPhoto",
+                                (err, users) => {
+                                    if(!err && users.length) {
+                                        postData.map(post => {
+                                            if(post.comments.length) {
+                                                post.comments.map(com => {
+                                                    const userInfo = users.filter(user => user._id == com.userId)[0]
+                                                    com.username = userInfo.username
+                                                    com.displayName = userInfo.displayName
+                                                    com.profilePhoto = userInfo.profilePhoto
+                                                    com.coverPhoto = userInfo.coverPhoto
+                                                    if(com.replies.length) {
+                                                        com.replies.map(rep => {
+                                                            const userInfo = users.filter(user => user._id == rep.userId)[0]
+                                                            rep.username = userInfo.username
+                                                            rep.displayName = userInfo.displayName
+                                                            rep.profilePhoto = userInfo.profilePhoto
+                                                            rep.coverPhoto = userInfo.coverPhoto
+                                                        })
+                                                    }
+                                                })
+                                            }
+                                        })
+                                        res.json({status: true, posts: postData})
+                                    }
                                 }
-                            })
-                            
+                            )
                         }
-                    })
-                    if(feeds.length) {
-                        res.json({ status: true, posts: feeds })
+                        else res.json({status: true, posts})
                     }
                     else {
                         res.json({ status: false, message: "No feed found" })

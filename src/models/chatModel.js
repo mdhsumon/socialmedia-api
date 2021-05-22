@@ -8,12 +8,12 @@ const chatSchema = new mongoose.Schema({
                 userId: { type: String, reqired: true },
                 messages: [
                     {
-                        messageId: { type: String, required: true },
                         origin: { type: String, reqired: true },
                         message: { type: String },
                         readStatus: { type: String, default: "unread" },
                         edited: { type: Boolean, default: false },
-                        time: { type: String, required: true, default: Date.now() }
+                        createdAt: { type: String, required: true, default: Date.now() },
+                        editedAt: { type: String }
                     }
                 ]
             }
