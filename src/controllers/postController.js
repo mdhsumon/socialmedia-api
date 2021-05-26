@@ -88,10 +88,10 @@ const getUserPosts = (req, res) => {
                     const comsReps = []
                     postData.map(post => {
                         if(post.comments.length) {
-                            post.comments.map(com => {
-                                comsReps.push(com.userId)
-                                if(com.replies.length)
-                                com.replies.map(rep => comsReps.push(rep.userId))
+                            post.comments.map(comment => {
+                                comsReps.push(comment.userId)
+                                if(comment.replies.length)
+                                comment.replies.map(reply => comsReps.push(reply.userId))
                             })
                         }
                     })
@@ -103,19 +103,19 @@ const getUserPosts = (req, res) => {
                                 if(!err && users.length) {
                                     postData.map(post => {
                                         if(post.comments.length) {
-                                            post.comments.map(com => {
-                                                const userInfo = users.filter(user => user._id == com.userId)[0]
-                                                com.username = userInfo.username
-                                                com.displayName = userInfo.displayName
-                                                com.profilePhoto = userInfo.profilePhoto
-                                                com.coverPhoto = userInfo.coverPhoto
-                                                if(com.replies.length) {
-                                                    com.replies.map(rep => {
-                                                        const userInfo = users.filter(user => user._id == rep.userId)[0]
-                                                        rep.username = userInfo.username
-                                                        rep.displayName = userInfo.displayName
-                                                        rep.profilePhoto = userInfo.profilePhoto
-                                                        rep.coverPhoto = userInfo.coverPhoto
+                                            post.comments.map(comment => {
+                                                const userInfo = users.filter(user => user._id == comment.userId)[0]
+                                                comment.username = userInfo.username
+                                                comment.displayName = userInfo.displayName
+                                                comment.profilePhoto = userInfo.profilePhoto
+                                                comment.coverPhoto = userInfo.coverPhoto
+                                                if(comment.replies.length) {
+                                                    comment.replies.map(reply => {
+                                                        const userInfo = users.filter(user => user._id == reply.userId)[0]
+                                                        reply.username = userInfo.username
+                                                        reply.displayName = userInfo.displayName
+                                                        reply.profilePhoto = userInfo.profilePhoto
+                                                        reply.coverPhoto = userInfo.coverPhoto
                                                     })
                                                 }
                                             })
@@ -180,10 +180,10 @@ const getUserFeeds = (req, res) => {
                         const comsReps = []
                         postData.map(post => {
                             if(post.comments.length) {
-                                post.comments.map(com => {
-                                    comsReps.push(com.userId)
-                                    if(com.replies.length)
-                                    com.replies.map(rep => comsReps.push(rep.userId))
+                                post.comments.map(comment => {
+                                    comsReps.push(comment.userId)
+                                    if(comment.replies.length)
+                                    comment.replies.map(reply => comsReps.push(reply.userId))
                                 })
                             }
                         })
@@ -192,22 +192,23 @@ const getUserFeeds = (req, res) => {
                                 {_id: {$in: comsReps}},
                                 "username displayName profilePhoto coverPhoto",
                                 (err, users) => {
-                                    if(!err && users.length) {
+                                    if(er) res.json({ status: false, message: "Error on comments or replies" })
+                                    else {
                                         postData.map(post => {
                                             if(post.comments.length) {
-                                                post.comments.map(com => {
-                                                    const userInfo = users.filter(user => user._id == com.userId)[0]
-                                                    com.username = userInfo.username
-                                                    com.displayName = userInfo.displayName
-                                                    com.profilePhoto = userInfo.profilePhoto
-                                                    com.coverPhoto = userInfo.coverPhoto
-                                                    if(com.replies.length) {
-                                                        com.replies.map(rep => {
-                                                            const userInfo = users.filter(user => user._id == rep.userId)[0]
-                                                            rep.username = userInfo.username
-                                                            rep.displayName = userInfo.displayName
-                                                            rep.profilePhoto = userInfo.profilePhoto
-                                                            rep.coverPhoto = userInfo.coverPhoto
+                                                post.comments.map(comment => {
+                                                    const userInfo = users.filter(user => user._id == comment.userId)[0]
+                                                    comment.username = userInfo.username
+                                                    comment.displayName = userInfo.displayName
+                                                    comment.profilePhoto = userInfo.profilePhoto
+                                                    comment.coverPhoto = userInfo.coverPhoto
+                                                    if(comment.replies.length) {
+                                                        comment.replies.map(reply => {
+                                                            const userInfo = users.filter(user => user._id == reply.userId)[0]
+                                                            reply.username = userInfo.username
+                                                            reply.displayName = userInfo.displayName
+                                                            reply.profilePhoto = userInfo.profilePhoto
+                                                            reply.coverPhoto = userInfo.coverPhoto
                                                         })
                                                     }
                                                 })
@@ -286,7 +287,7 @@ const updatePostById = (req, res) => {
                 }
             }
             PM.updateOne(condition, newDoc, (err, raw) => {
-                    if(err || !raw.nModified) res.json({ status: false, message: "Error" })
+                    if(err || !raw.nModified) res.json({ status: false, message: "Updating error" })
                     else res.json({ status: true, count: counter, message: `You have ${counter ? "reacted" : "pulled reaction"}` })
                 }
             )
@@ -301,7 +302,7 @@ const updatePostById = (req, res) => {
                         // Pushed logged user for reacting own post
                         userData.friends.push({status: "active", userId: loggedUser})
                         const isFriend = userData.friends.filter(user => user.userId === post.userInfo.userId)
-                        if (isFriend.length) {
+                        if(isFriend.length) {
                             switch (area) {
                                 case "react":
                                     if(data === "like" || emojis.filter(emo => emo === data).length) {
@@ -312,15 +313,15 @@ const updatePostById = (req, res) => {
                                     }
                                 break
                                 case "comment":
-                                    switch (action) {
+                                    switch(action) {
                                         case "add":
                                             PM.updateOne(
                                             { _id: postId },
-                                            { $push: { comments: { userId: userData._id, message: data } } },
+                                            { $push: { comments: { userId: loggedUser, message: data } } },
                                             error => {
-                                                if (error) res.json({ status: false, message: "Something went wrong" })
+                                                if(error) res.json({ status: false, message: "Something went wrong" })
                                                 else {
-                                                    res.json({ status: true, message: "Comment added successfully!" })
+                                                    res.json({ status: true, message: "Comment added" })
                                                 }
                                             })
                                         break
@@ -330,16 +331,34 @@ const updatePostById = (req, res) => {
                                             { _id: postId, "comments._id": req.body.commentId },
                                             { $set: { "comments.$.message": data } },
                                             error => {
-                                                if (error) res.json({ status: false, message: "Something went wrong" })
+                                                if(error) res.json({ status: false, message: "Error or invalid comment id" })
                                                 else {
-                                                    res.json({ status: true, message: "Comment updated successfully!" })
+                                                    res.json({ status: true, message: "Comment updated" })
                                                 }
                                             })
                                         break
+                                        case "addreply":
+                                            PM.updateOne(
+                                            { _id: postId, "comments._id": req.body.commentId },
+                                            { $push: { "comments.$.replies": { userId: loggedUser, message: data } } },
+                                            error => {
+                                                if(error) res.json({ status: false, message: "Error or invalid comment id" })
+                                                else res.json({ status: true, message: "Comment reply added" })
+                                            })
+                                        break
+                                        case "editreply":
+                                            PM.updateOne(
+                                            { _id: postId, "comments.replies._id": req.body.replyId },
+                                            { $set: { "comments.replies.$.message": data } },
+                                            error => {
+                                                if(error) res.json({ status: false, message: "Error or invalid comment id" })
+                                                else res.json({ status: true, message: "Comment reply updated" })
+                                            })
+                                        break
+                                        default: res.json({ status: false, message: "Invalid action data" })
                                     }
                                 break
-                                default:
-                                    res.json({ status: false, message: "Invalid area data" })
+                                default: res.json({ status: false, message: "Invalid area data" })
                             }
                         }
                         else {

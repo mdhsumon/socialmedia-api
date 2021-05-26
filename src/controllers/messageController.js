@@ -1,6 +1,5 @@
 const CM = require("../models/chatModel")
 const CA = require("../common/commonActions")
-const UM = require("../models/userModel")
 
 // Get user all messages
 const getUserMessages = (req, res) => {

@@ -26,7 +26,7 @@ const postSchema = new mongoose.Schema({
                 message: { type: String },
                 replies: [
                     {
-                        userId: { type: Number },
+                        userId: { type: String },
                         message: { type: String }
                     }
                 ]
