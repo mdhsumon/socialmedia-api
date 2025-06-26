@@ -1,4 +1,4 @@
-# Available api urls:
+# Available APIs:
 ### Each request must have access token in request body after login.
 
 **Create new user**
